@@ -890,11 +890,11 @@ def get_context(window, token_idx, tokens):
 
 def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enriched=False, trim=3000):
     num_of_senses = 2  # 2; number of senses
-    window = 7  # Max window length: 5 for large set(excluding
+    window = 7  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 3  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.0125  # 0.01
+    alpha_0 = 0.012500  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -1013,7 +1013,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enr
                     v_c[context_word] += neu1e
 
         # update learning rate
-        alpha = 0.95**epoch * alpha_0
+        alpha = 0.99**epoch * alpha_0
 
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file)
@@ -1147,10 +1147,10 @@ def execute_emssg():
 
 def execute_mssg():
     start = time.time()
-    dimension = 50
+    dimension = 100
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    output_file = emssg(english_corpus, epochs=10, enriched=False, trim=3000)
+    output_file = emssg(english_corpus, epochs=15, enriched=False, trim=100000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     evaluate(output_file, "localSim", enr=False)
     end = time.time()
