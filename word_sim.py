@@ -223,11 +223,8 @@ class MSEmbeddings:
         # LocalSim: single sense selection for each word based on the context
         k = self.get_most_probable_sense(w, c)
         k_ = self.get_most_probable_sense(w_, c_)
-        if self.sense_dict[w][k].all() != 0.0 and self.sense_dict[w_][k_].all() != 0.0:
-            similarity = np.dot(self.sense_dict[w][k], self.sense_dict[w_][k_]) / (np.linalg.norm(self.sense_dict[w][k]) * np.linalg.norm(self.sense_dict[w_][k_]))
-            return similarity
-        else:
-            return None
+        similarity = np.dot(self.sense_dict[w][k], self.sense_dict[w_][k_]) / (np.linalg.norm(self.sense_dict[w][k]) * np.linalg.norm(self.sense_dict[w_][k_]))
+        return similarity
 
     def eval_on_multiple(self, eval_file, sim_type="global"):
         ws353_pairs = {}
@@ -346,7 +343,7 @@ def extract_embs_from_file(filename):
     return w2emb
 
 
-def evaluate(embedding_file, sim_type, enr=False, sense_files=[]):
+def evaluate(embedding_file, sim_type, sense_files=[]):
     scws_f = "SCWS/ratings.txt"
     print("SENSE_FILES:" + str(sense_files))
     emb = MSEmbeddings(embedding_file, sense_files)
