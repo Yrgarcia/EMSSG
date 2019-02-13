@@ -888,13 +888,13 @@ def get_context(window, token_idx, tokens):
     return context, context_start, context_end
 
 
-def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enriched=False, trim=3000):
+def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=3000):
     num_of_senses = 2  # 2; number of senses
     window = 7  # Max window length: 5 for large set(excluding
     k_negative_sampling = 5  # Number of negative examples
     min_count = 3  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.0125  # 0.01
+    alpha_0 = 0.0005  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -920,6 +920,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enr
     v_s_wk = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), num_of_senses, dim))
     np.random.seed(7)
     v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), dim))
+    enr = "not_enr_"
     if enriched:
         embedding_file = 'EMSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
         converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
@@ -931,6 +932,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enr
         # ENR: v_c_ for enriched context vectors:
         np.random.seed(7)
         v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(combined_vocab), dim))
+        enr = "enr_"
     vector_count = {}  # for counting vectors in iteration
     temp_fill_dict_vc = {}  # temp dict for filling vector_count
     mys = []  # for saving mys to file
@@ -945,7 +947,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enr
         # senses.append(np.zeros(shape=(len(vocab), dim)))
     # Start training:
     for epoch in range(epochs):
-        print("EMSSG EPOCH: " + str(epoch))
+        print(enr + "EPOCH: " + str(epoch))
         for token_idx, token in enumerate(tokens):
             if token2word[token] not in stop_notal:
                 if epoch == 0:
@@ -1013,27 +1015,24 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enr
                     v_c[context_word] += neu1e
 
         # update learning rate
-        alpha = 0.99**epoch * alpha_0
+        alpha = 0.95**epoch * alpha_0
 
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file)
         # Evaluate context embeddings:
         sp = evaluate(embedding_file, "globalSim")
-        log_spearman(sp, "LOG_ENR_context_embs")
+        log_spearman(sp, "LOG_" + enr + "context_embs")
         # save best embeddings to BEST_MSSG_embs
         if sp > old_sp_ctxt:
             old_sp_ctxt = sp
             save(vocab, v_c, "BEST_" + embedding_file)
-
-        if enriched: enr = "enr_"
-        else: enr = "not_enr_"
 
         # # Save cluster centres to files
         # for k in range(num_of_senses):
         #     save(vocab, mys[k], enr + "MYS_" + str(k))
         # # Evaluate sense embeddings:
         # sp_my = evaluate("BEST_" + embedding_file, "localSim", enr=False, sense_files=["not_enr_MYS_0", "not_enr_MYS_1"])
-        # log_spearman(sp_my, "LOG_MYS")
+        # log_spearman(sp_my, "LOG_" + enr + "MYS")
         # # save best senses to BEST_MYS_*
         # if sp_my > old_sp_my:
         #     old_sp_my = sp_my
@@ -1045,7 +1044,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=5, enr
             save(senses[k].keys(), senses[k].values(), enr + "SENSES_" + str(k))
         # Evaluate sense embeddings:
         spearman = evaluate(embedding_file, "localSim", sense_files=[enr + "SENSES_0", enr + "SENSES_1"])
-        log_spearman(spearman, "LOG_ENR_senses")
+        log_spearman(spearman, "LOG_" + enr + "_senses")
         # save best senses to BEST_enr_SENSES_* or BEST_not_enr_SENSES_*
         if spearman > old_spearman:
             old_spearman = spearman
@@ -1147,12 +1146,15 @@ def execute_emssg():
 
 def execute_mssg():
     start = time.time()
-    dimension = 50
+    dimension = 100
+    enrich = False
+    if enrich: enr = "enr_"
+    else: enr = "not_enr_"
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    output_file = emssg(english_corpus, epochs=10, enriched=False, trim=3000)
+    output_file = emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=3000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
-    evaluate(output_file, "localSim", enr=False)
+    evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
