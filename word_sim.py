@@ -315,7 +315,7 @@ class MSEmbeddings:
                     # print("\nMy score " + str((self.local_sim(pairs[0], pairs[1], context_vec1, context_vec2)) * 10))
                     my_scores.append((self.local_sim(pairs[0], pairs[1], context_vec1, context_vec2)) * 10)
 
-                # print("\nScore for " + str(pairs) + ": " + str(score) + "\nMy score: " + str(my_scores[-1]))
+                print("\nScore for " + str(pairs) + ": " + str(score) + "\nMy score: " + str(my_scores[-1]))
                 # print("\n=================================================")
                 gold_scores.append(score)
 
