@@ -160,10 +160,12 @@ def get_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", new_f
     words = set(words)
     print(words)
     new_lines = []
-    for word in words:
-        new_lines += [line for line in open(filename) if word in line]
-
-    open(new_file, 'w').writelines(lines)
+    with open(filename) as corpus:
+        lines = corpus.readlines()
+    print("lines read!")
+    for line in lines:
+        if any(word in lines for word in words):
+            open(new_file,"a").write(line + "\n")
     return new_file
 
 
