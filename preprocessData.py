@@ -149,7 +149,26 @@ class PreprocessData:
         self.fast_align_sentences(temp_file_for_fast_align, output_fast_align, path_fast_align, use_pos_tags=True)
 
 
+def get_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", new_file="TEST_corpus_en"):
+    words = []
+    with open(eval_data) as scws:
+        lines = scws.readlines()
+    for line in lines:
+        sline = line.split("\t")
+        words.append(sline[1])
+        words.append(sline[3])
+    words = set(words)
+    print(words)
+    new_lines = []
+    for word in words:
+        new_lines += [line for line in open(filename) if word in line]
+
+    open(new_file, 'w').writelines(lines)
+    return new_file
+
+
 if __name__ == '__main__':
+    get_test_corpus()
     #pD = PreprocessData()
     #pD.preprocess_data()
 

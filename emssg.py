@@ -869,9 +869,28 @@ def get_nearest_my(old_my, average, maximum, k):
     return maximum, max_k
 
 
-def gradient_update():
+def backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t, alpha):
+    neu1e = np.zeros(dim)
+    for target, label in classifiers:  # label: 0 if word is not token, 1 if it is
+        p = cosine(v_c[context_word], v_s_wk[target][s_t]) - 1.0
+        g = (alpha * (p + label))  # g positive for token, negative for targets
+        neu1e += g * v_s_wk[target][s_t]  # Error to backpropagate to v_s_wk
+        v_s_wk[target][s_t] += g * v_c[context_word]  # Update v_s_wk(w,s_t) with v_c(c)
+    # ##############  Update v_c(c) with v_s_wk: ##########################
+    v_c[context_word] += neu1e
+    return v_s_wk, v_c
 
-    return 0
+
+def gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha, senses, token2word, most_common_words):
+    for context_word in context:
+        # perform gradient updates:
+        # for every word in the token's context: sample k negative examples
+        # Init neu1e with zeros
+        classifiers = [(token, 1)] + [(target, -1) for target in table.sample(k_negative_sampling)]
+        v_s_wk, v_c = backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t, alpha)
+        if token2word[token] in most_common_words:
+            senses[s_t][token2word[token]] = v_s_wk[token][s_t]
+    return v_c, senses, v_s_wk
 
 
 def log_spearman(spearman_corr, filename):
@@ -894,7 +913,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     k_negative_sampling = 5  # Number of negative examples
     min_count = 3  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.005  # 0.01
+    alpha_0 = 0.01  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -998,34 +1017,20 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     vector_count[token2word[token]][s_t] += 1
 
 # ###################################### GRADIENT UPDATE #################################################
-                for context_word in context:
-                    # perform gradient updates:
-                    # for every word in the token's context: sample k negative examples
-                    # Init neu1e with zeros
-                    neu1e = np.zeros(dim)
-                    classifiers = [(token, 1)] + [(target, -1) for target in table.sample(k_negative_sampling)]
-                    for target, label in classifiers:  # label: 0 if word is not token, 1 if it is
-                        p = cosine(v_c[context_word], v_s_wk[target][s_t]) - 1.0
-                        g = (alpha * (p + label))  # g positive for token, negative for targets
-                        neu1e += g * v_s_wk[target][s_t]  # Error to backpropagate to v_s_wk
-                        v_s_wk[target][s_t] += g * v_c[context_word]  # Update v_c(c) with v_s_wk
-                    if token2word[token] in most_common_words:
-                        senses[s_t][token2word[token]] = v_s_wk[token][s_t]
-                    # ############## Update v_s_wk(w,s_t) with v_c(c): ##########################
-                    v_c[context_word] += neu1e
+                v_c, senses, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha, senses, token2word, most_common_words)
 
         # update learning rate
-        alpha = 0.7**epoch * alpha_0
+        alpha = 0.8**epoch * alpha_0
 
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file)
         # Evaluate context embeddings:
         sp = evaluate(embedding_file, "globalSim")
-        log_spearman(sp, "LOG_" + enr + "context_embs")
+        log_spearman(sp, "LOG_%scontext_embs" % enr)
         # save best embeddings to BEST_MSSG_embs
-        if sp > old_sp_ctxt:
-            old_sp_ctxt = sp
-            save(vocab, v_c, "BEST_" + embedding_file)
+        # if sp > old_sp_ctxt:
+        #   old_sp_ctxt = sp
+        #   save(vocab, v_c, "BEST_" + embedding_file)
 
         # # Save cluster centres to files
         # for k in range(num_of_senses):
@@ -1041,15 +1046,15 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
 
         # Save sense embeddings to files
         for k in range(num_of_senses):
-            save(senses[k].keys(), senses[k].values(), enr + "SENSES_" + str(k))
+            save(senses[k].keys(), senses[k].values(), "%sSENSES_%s" % (enr, str(k)))
         # Evaluate sense embeddings:
-        spearman = evaluate(embedding_file, "localSim", sense_files=[enr + "SENSES_0", enr + "SENSES_1"])
-        log_spearman(spearman, "LOG_" + enr + "senses")
+        spearman = evaluate(embedding_file, "localSim", sense_files=["%sSENSES_0" % enr, "%sSENSES_1" % enr])
+        log_spearman(spearman, "LOG_%ssenses" % enr)
         # save best senses to BEST_enr_SENSES_* or BEST_not_enr_SENSES_*
-        if spearman > old_spearman:
-            old_spearman = spearman
-            for k in range(num_of_senses):
-                save(senses[k].keys(), senses[k].values(), "BEST_" + enr + "SENSES_" + str(k))
+        # if spearman > old_spearman:
+        #    old_spearman = spearman
+        #    for k in range(num_of_senses):
+        #        save(senses[k].keys(), senses[k].values(), "BEST_" + enr + "SENSES_" + str(k))
         print("\n===========================================================")
     # return v_s_wk, v_c, my_wk  # ENR: return v_c_
     return embedding_file
@@ -1152,9 +1157,11 @@ def execute_mssg():
     else: enr = "not_enr_"
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    output_file = emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=10000)
+    import cProfile
+    cProfile.run('emssg("tokenized_en", epochs=10, dim=100, enriched=False, trim=3000)')
+    #output_file = emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=3000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
-    evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
+    #evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
