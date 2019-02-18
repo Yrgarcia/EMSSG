@@ -17,7 +17,7 @@ def plot_spearmans(file):
 
 
 # plot_spearmans(sys.argv[1])
-plot_spearmans("LOG_not_enr__senses")
+plot_spearmans("LOG_not_enr_senses")
 plot_spearmans("LOG_not_enr_context_embs")
 
 # plot_spearmans("LOG_ENR")
