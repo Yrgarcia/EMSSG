@@ -517,14 +517,27 @@ class Vocabulary:
         return [self.word_map[token] if token in self else self.word_map['UNKNOWN'] for token in tokens]
 
     def get_most_common(self, top_num, corpus):
+        def get_eval_words(eval_data):
+            words = []
+            with open(eval_data) as scws:
+                lines = scws.readlines()
+            for line in lines:
+                sline = line.split("\t")
+                words.append(sline[1])
+                words.append(sline[3])
+            words = set(words)
+            return words
+        # TODO: remove when finished with testing
+        eval_words = get_eval_words("SCWS/ratings.txt")
+
         word_count_pairs = []
         for word in self.words:
-            if word.word not in corpus.notalnums and word.word not in self.stopwords and word.word != "UNKNOWN" and word.word not in self.prepositions:
+            if word.word in eval_words and word.word not in corpus.notalnums and word.word not in self.stopwords and word.word != "UNKNOWN" and word.word not in self.prepositions:
                 temp = (word.word, word.count)
                 word_count_pairs.append(temp)
         top_x = word_count_pairs[:top_num]
         top_x_words = [x[0] for x in top_x]
-        # print(top_x_words)
+        print("TOP %d words (within eval): %s " % (top_num, str(top_x_words)))
         return top_x_words
 
     def get_most_common_prepositions(self, top_num):
@@ -1020,7 +1033,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 v_c, senses, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha, senses, token2word, most_common_words)
 
         # update learning rate
-        alpha = 0.8**epoch * alpha_0
+        alpha = 0.95**epoch * alpha_0
 
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file)
@@ -1158,8 +1171,8 @@ def execute_mssg():
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
     import cProfile
-    cProfile.run('emssg("tokenized_en", epochs=10, dim=100, enriched=False, trim=3000)')
-    #output_file = emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=3000)
+    #cProfile.run('emssg("tokenized_en", epochs=1, dim=100, enriched=False, trim=3000)')
+    output_file = emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=3000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     #evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
