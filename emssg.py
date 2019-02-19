@@ -858,7 +858,7 @@ def get_prepositions(filename):
 
 def create_token2word(vocab):
     token2word = {}
-    stop = vocab.stopwords
+    stop = vocab.stopwords + vocab.notalnums
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
         if val not in stop:
             token2word[key] = val
@@ -900,16 +900,14 @@ def backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t
     return v_s_wk, v_c
 
 
-def gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha, senses, token2word, most_common_words):
+def gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha):
     for context_word in context:
         # perform gradient updates:
         # for every word in the token's context: sample k negative examples
         # Init neu1e with zeros
         classifiers = [(token, 1)] + [(target, 0) for target in table.sample(k_negative_sampling)]
         v_s_wk, v_c = backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t, alpha)
-        if token2word[token] in most_common_words:
-            senses[s_t][token2word[token]] = v_s_wk[token][s_t]
-    return v_c, senses, v_s_wk
+    return v_c, v_s_wk
 
 
 def log_spearman(spearman_corr, filename):
@@ -932,7 +930,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     k_negative_sampling = 5  # Number of negative examples
     min_count = 3  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.01  # 0.01
+    alpha_0 = 0.025  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -948,8 +946,6 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     token2word = create_token2word(vocab)
     # most_common_preps = vocab.get_most_common_prepositions(100)
     most_common_words = vocab.get_most_common(1000, corpus)
-    stop_words = vocab.stopwords
-    notalnums = vocab.notalnums
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
     my_wk = np.zeros(shape=(len(vocab), num_of_senses, dim))
@@ -973,15 +969,10 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     vector_count = {}  # for counting vectors in iteration
     temp_fill_dict_vc = {}  # temp dict for filling vector_count
     mys = []  # for saving mys to file
-    t_dict_for_senses = {}
-    for word in most_common_words:
-        t_dict_for_senses[word] = np.zeros(shape=dim)
-    senses = [t_dict_for_senses for i in range(num_of_senses)]  # for saving senses to file: senses[0] = vectors for each word for s0 =[{"word":[1.23,0.56,...]},{...}]
-    # Fill mys, senses and a temporary dict for later use (vector_count)
+    # Fill mys and a temporary dict for later use (vector_count)
     for k in range(num_of_senses):
         temp_fill_dict_vc[k] = 0
         mys.append(np.zeros(shape=(len(vocab), dim)))
-        # senses.append(np.zeros(shape=(len(vocab), dim)))
     # Start training:
     for epoch in range(epochs):
         print(enr + "EPOCH: " + str(epoch))
@@ -1035,7 +1026,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     vector_count[token2word[token]][s_t] += 1
 
 # ###################################### GRADIENT UPDATE #################################################
-                v_c, senses, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha, senses, token2word, most_common_words)
+                v_c, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha)
 
         # update learning rate
         alpha = 0.8**epoch * alpha_0
@@ -1062,9 +1053,16 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         #     for k in range(num_of_senses):
         #         save(vocab, mys[k], "BEST_" + enr + "MYS_" + str(k))
 
-        # Save sense embeddings to files
-        for k in range(num_of_senses):
-            save(senses[k].keys(), senses[k].values(), "%sSENSES_%s" % (enr, str(k)))
+        # Save sense embeddings to files:
+        senses0 = {}
+        senses1 = {}
+        for i in range(len(vocab.words)):
+            if vocab.words[i].word in most_common_words:
+                senses0[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][0]
+                senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
+
+        save(senses0.keys(), senses0.values(), "%sSENSES_0" % enr)
+        save(senses1.keys(), senses1.values(), "%sSENSES_1" % enr)
         # Evaluate sense embeddings:
         spearman = evaluate(embedding_file, "localSim", sense_files=["%sSENSES_0" % enr, "%sSENSES_1" % enr])
         log_spearman(spearman, "LOG_%ssenses" % enr)
@@ -1175,7 +1173,7 @@ def execute_mssg():
     else: enr = "not_enr_"
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=10000)
+    emssg(english_corpus, epochs=5, dim=dimension, enriched=enrich, trim=10000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()

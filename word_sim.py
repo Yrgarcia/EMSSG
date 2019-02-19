@@ -160,7 +160,7 @@ class MSEmbeddings:
                      'yourselves'}
 
     def create_sense_dict(self, sense_files):
-        # load all embedding files including global embeddings (emb_file) and my-cluster embeddings (sense_files)
+        # load all embedding files embeddings (sense_files)
         sense_dict = {}
         for i in range(len(sense_files)):
             with open(sense_files[i]) as sf:
