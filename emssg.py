@@ -537,7 +537,7 @@ class Vocabulary:
                 word_count_pairs.append(temp)
         top_x = word_count_pairs[:top_num]
         top_x_words = [x[0] for x in top_x]
-        print("TOP %d words (within eval): %s " % (top_num, str(top_x_words)))
+        # print("TOP %d words (within eval): %s " % (top_num, str(top_x_words)))
         return top_x_words
 
     def get_most_common_prepositions(self, top_num):
@@ -858,8 +858,13 @@ def get_prepositions(filename):
 
 def create_token2word(vocab):
     token2word = {}
+    stop = vocab.stopwords
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
-        token2word[key] = val
+        if val not in stop:
+            token2word[key] = val
+        else:
+            # add False value to filter out stop words while training
+            token2word[key] = False
     return token2word
 
 
@@ -926,7 +931,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     k_negative_sampling = 5  # Number of negative examples
     min_count = 3  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.01  # 0.01
+    alpha_0 = 0.005  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -944,7 +949,6 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     most_common_words = vocab.get_most_common(1000, corpus)
     stop_words = vocab.stopwords
     notalnums = vocab.notalnums
-    stop_notal = notalnums + stop_words
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
     my_wk = np.zeros(shape=(len(vocab), num_of_senses, dim))
@@ -981,24 +985,24 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     for epoch in range(epochs):
         print(enr + "EPOCH: " + str(epoch))
         for token_idx, token in enumerate(tokens):
-            if token2word[token] not in stop_notal:
+            if token2word[token]:
                 if epoch == 0:
                     vector_count[token2word[token]] = temp_fill_dict_vc
                 # Get sg context from context window:
                 context_, context_start, context_end = get_context(window, token_idx, tokens)
                 # Remove stop words from context:
-                context = [tok for tok in context_ if token2word[tok] not in stop_notal]
+                context = [tok for tok in context_ if token2word[tok]]
                 window_ = window
                 while not context:
                     window_ += 1
                     context_, context_start, context_end = get_context(window, token_idx, tokens)
-                    context = [tok for tok in context_ if token2word[tok] not in stop_notal]
+                    context = [tok for tok in context_ if token2word[tok]]
                 # ENR: get enriched context and unify
                 if enriched:
                     enriched_context = []
                     enriched_context_als_ = converted_als[context_start:token_idx] + converted_als[token_idx + 1:context_end]
                     # remove english stop words and aligned spanish word:
-                    enriched_context_als = [tok for tok in enriched_context_als_ if token2word[tok[0]] not in stop_notal]
+                    enriched_context_als = [tok for tok in enriched_context_als_ if token2word[tok[0]]]
                     for als in enriched_context_als:
                         # go through retrieved alignments and get token IDs from corresponding aligned tokens
                         if als != [""]:
@@ -1033,7 +1037,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 v_c, senses, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha, senses, token2word, most_common_words)
 
         # update learning rate
-        alpha = 0.95**epoch * alpha_0
+        alpha = 0.5**epoch * alpha_0
 
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file)
@@ -1172,7 +1176,7 @@ def execute_mssg():
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
     import cProfile
     #cProfile.run('emssg("tokenized_en", epochs=1, dim=100, enriched=False, trim=3000)')
-    output_file = emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=3000)
+    output_file = emssg(english_corpus, epochs=1, dim=dimension, enriched=enrich, trim=2000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     #evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
