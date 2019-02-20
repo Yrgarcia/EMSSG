@@ -176,7 +176,7 @@ class MSEmbeddings:
         return sense_dict
 
     def get_most_probable_sense(self, w, c):
-        sim_wc = 1.0
+        sim_wc = 2.0
         sense = "NONE"
         for k in range(self.k_senses):
             sim_wc_new = scipy.spatial.distance.cosine(self.sense_dict[w][k], c)
@@ -186,7 +186,7 @@ class MSEmbeddings:
         return sense
 
     def get_probability_of_sense(self, w, c):
-        sim_wc = 1.0
+        sim_wc = 2.0
         for k in range(self.k_senses):
             sim_wc_new = scipy.spatial.distance.cosine(self.sense_dict[w][k], c)
             if sim_wc_new < sim_wc:
