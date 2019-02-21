@@ -38,7 +38,7 @@ class Corpus:
                     if len(token) < 2 and not token.isalnum():
                         self.notalnums.append(token)
                     all_tokens.append(token)
-            #print("NOTALNUMS: " + str(set(notalnums)))
+            #print("NOTALNUMS: " + str(set(self.notalnums)))
 
             #file_pointer.close()
 
@@ -858,7 +858,7 @@ def get_prepositions(filename):
 
 def create_token2word(vocab):
     token2word = {}
-    stop = vocab.stopwords + vocab.notalnums
+    stop = vocab.stopwords
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
         if val not in stop:
             token2word[key] = val
@@ -930,7 +930,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     k_negative_sampling = 5  # Number of negative examples
     min_count = 3  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.025  # 0.01
+    alpha_0 = 0.01  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -984,8 +984,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 context_, context_start, context_end = get_context(window, token_idx, tokens)
                 # Remove stop words from context:
                 context = [tok for tok in context_ if token2word[tok]]
-                window_ = window
-                while not context:
+                window_ = len(context_)
+                while not context and window_ < 15:
                     window_ += 1
                     context_, context_start, context_end = get_context(window, token_idx, tokens)
                     context = [tok for tok in context_ if token2word[tok]]
@@ -1008,7 +1008,11 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     for context_word in context:
                         sum_of_vc = np.add(sum_of_vc, v_c[context_word])
                     # ########### calculate average of context words' vectors ####################
-                    average = sum_of_vc * math.pow(len(context), -1)
+                    try:
+                        average = sum_of_vc * math.pow(len(context), -1)
+                    except ValueError:
+                        print("WINDOW: " + str(window_))
+                        print(str(token2word[tokens[token_idx-4]]) + str(token2word[tokens[token_idx-3]]) + str(token2word[tokens[token_idx-2]]) + str(token2word[tokens[token_idx-1]]) + token2word[token])
                     # ########### get nearest sense k (s_t) from sim(my(w_t,k), sum_of_vc) #######
                     maximum = 1.0
                     for k in range(num_of_senses):
@@ -1173,7 +1177,7 @@ def execute_mssg():
     else: enr = "not_enr_"
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=5, dim=dimension, enriched=enrich, trim=10000)
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=100000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
