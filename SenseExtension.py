@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+
+"""
+Extension to train MLP with additional sense vectors per word.
+@author: Yoalli García
+"""
 from PrepDataReader import readFile
 import codecs
 from scipy.spatial.distance import cosine
@@ -5,12 +11,12 @@ import numpy as np
 
 
 class SenseExtension:
-    def __init__(self, emb_file, sense_files, sentences):
-        self.global_w2vec = {}
-        self.w2emb, self.w2Idx = {}, {}
-        self.w2sense = {}
-        self.sense_words = []
-        self.sense_dict = {}
+    def __init__(self, emb_file, sense_files, sentences, dim=100):
+        self.global_w2vec = {}  # GLOBAL vectors for every global word
+        self.w2emb, self.w2Idx = {}, {}  # COMBO: word to sense+global vecs; w2Idx: word to word index
+        self.w2sense = {}  # RENAMED sense-words and sense vectors
+        self.sense_words = []  # all words that have senses
+        self.sense_dict = {}  # k sense vectors per word (SINGLE WORD entry)
 
         self.stopwords = {'a',
                      'ain',
@@ -160,14 +166,14 @@ class SenseExtension:
                      'your',
                      'yours',
                      'yourself',
-                     'yourselves'}
-        self.k_senses = len(sense_files)
-        self.emb_file = emb_file
-        self.sense_files = sense_files
-        self.sentences = sentences
+                     'yourselves'}  # stopword set
+        self.k_senses = len(sense_files)  # number of senses
+        self.emb_file = emb_file  # name of file with pretrained global embeddings
+        self.sense_files = sense_files  # list of names of sense vector files
+        self.sentences = sentences  # list of lists of words of sentences from STREUSLE corpus
 
         self.extract_global_embs()
-        self.get_all_embeddings()
+        self.get_all_embeddings(dim=dim)
         self.extract_sense_embs()
         self.create_sense_dict()
 
@@ -204,7 +210,7 @@ class SenseExtension:
             temp = line.split(" ")
             self.global_w2vec[temp[0]] = np.array([float(x) for x in temp[1:]])
 
-    def get_all_embeddings(self):
+    def get_all_embeddings(self, dim=100):
         # return dictionary containing all embeddings including sense embs and global embs
         for g_key in self.global_w2vec.keys():
             if g_key + "0" in self.w2sense.keys():
@@ -214,6 +220,7 @@ class SenseExtension:
             else:
                 self.w2emb[g_key] = self.global_w2vec[g_key]
         idx = 0
+        self.w2emb["PADDING"] = np.zeros(shape=dim)
         for word in self.w2emb.keys():
             self.w2Idx[word] = idx
             idx += 1
@@ -299,6 +306,10 @@ class SenseExtension:
 
 
 if __name__ == '__main__':
-    sentences = readFile("data/streusle_train.conll")
-    SE = SenseExtension("emb/MSSG-test", ["emb/not_enr_SENSES_0", "emb/not_enr_SENSES_1"], sentences)
-    SE.integrate_senses_to_data()
+    # global_embs = "./emb/MSSG-test"
+    # sense_files = ["./emb/not_enr_SENSES_0", "./emb/not_enr_SENSES_1"]
+    # data = "data/streusle_train.conll"
+    # sentences = readFile(data)
+    # SE = SenseExtension(global_embs, sense_files, sentences)
+    pass
+
