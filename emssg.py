@@ -582,10 +582,11 @@ class TableForNegativeSamples:
         power = 0.75
         norm = sum([math.pow(t.count, power) for t in vocab]) # Normalizing constants
 
-        table_size = 100000000
+        # table_size = 100000000
+        table_size = 100
         table = np.zeros(table_size, dtype=np.uint32)
 
-        p = 0 # Cumulative probability
+        p = 0  # Cumulative probability
         i = 0
         for j, word in enumerate(vocab):
             p += float(math.pow(word.count, power))/norm
@@ -858,7 +859,7 @@ def get_prepositions(filename):
 
 def create_token2word(vocab):
     token2word = {}
-    stop = vocab.stopwords
+    stop = vocab.stopwords + list(set(vocab.notalnums))
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
         if val not in stop:
             token2word[key] = val
@@ -916,19 +917,35 @@ def log_spearman(spearman_corr, filename):
         sl.close()
 
 
-def get_context(window, token_idx, tokens):
-    current_window = np.random.randint(low=3, high=window + 1)
+def get_context(window, token_idx, tokens, rand=True):
+    if rand:
+        current_window = np.random.randint(low=3, high=window + 1)
+    else:
+        current_window = window
     context_start = max(token_idx - current_window, 0)
     context_end = min(token_idx + current_window + 1, len(tokens))
     context = tokens[context_start:token_idx] + tokens[token_idx + 1:context_end]
     return context, context_start, context_end
 
 
-def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=3000):
+def get_enriched_context(len_vocab, token2word, tokens_, tokens, converted_als, token_idx, context_start, context_end):
+    enriched_context = []
+    enriched_context_als_ = converted_als[context_start:token_idx] + converted_als[token_idx + 1:context_end]
+    # remove english stop words and aligned spanish word:
+    enriched_context_als_ = [tok for tok in enriched_context_als_ if tok[0] != '']
+    enriched_context_als = [tok for tok in enriched_context_als_ if token2word[tokens[tok[0]]]]
+    for als in enriched_context_als:
+        # go through retrieved alignments and get token IDs from corresponding aligned tokens
+        if als != [""]:
+            enriched_context.append(tokens_[als[1]]+len_vocab)
+    return enriched_context
+
+
+def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10):
     num_of_senses = 2  # 2; number of senses
-    window = 7  # Max window length: 5 for large set(excluding
+    window = 7  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 3  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
     alpha_0 = 0.01  # 0.01
     alpha = alpha_0
@@ -944,6 +961,11 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
     token2word = create_token2word(vocab)
+    
+    temp_token2word = {}
+    for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
+        temp_token2word[key] = val
+    
     # most_common_preps = vocab.get_most_common_prepositions(100)
     most_common_words = vocab.get_most_common(1000, corpus)
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
@@ -957,14 +979,15 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     if enriched:
         embedding_file = 'EMSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
         converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
-        corpus_ = Corpus([corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_es)
-        combined_corpus = Corpus([corpus_en, corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_en)
+        corpus_ = Corpus([corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_es, trim=trim)
+        # combined_corpus = Corpus([corpus_en, corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_en, trim=trim)
         vocab_ = Vocabulary(corpus_, min_count)
-        combined_vocab = Vocabulary(combined_corpus, min_count)
+        # combined_vocab = Vocabulary(combined_corpus, min_count)
         tokens_ = vocab_.indices(corpus_)
         # ENR: v_c_ for enriched context vectors:
         np.random.seed(7)
-        v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(combined_vocab), dim))
+        len_vocab = len(vocab)
+        v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab)+len(vocab_), dim))
         enr = "enr_"
     vector_count = {}  # for counting vectors in iteration
     temp_fill_dict_vc = {}  # temp dict for filling vector_count
@@ -981,24 +1004,22 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 if epoch == 0:
                     vector_count[token2word[token]] = temp_fill_dict_vc
                 # Get sg context from context window:
-                context_, context_start, context_end = get_context(window, token_idx, tokens)
-                # Remove stop words from context:
+                context_, context_start, context_end = get_context(window, token_idx, tokens, rand=False)
+                # Remove stop words from context and refill while empty:
                 context = [tok for tok in context_ if token2word[tok]]
-                window_ = len(context_)
-                while not context and window_ < 15:
+                window_ = int(len(context_)/2)
+                while not context and window_ < 10:
                     window_ += 1
-                    context_, context_start, context_end = get_context(window, token_idx, tokens)
+                    context_, context_start, context_end = get_context(window_, token_idx, tokens)
                     context = [tok for tok in context_ if token2word[tok]]
                 # ENR: get enriched context and unify
                 if enriched:
-                    enriched_context = []
-                    enriched_context_als_ = converted_als[context_start:token_idx] + converted_als[token_idx + 1:context_end]
-                    # remove english stop words and aligned spanish word:
-                    enriched_context_als = [tok for tok in enriched_context_als_ if token2word[tok[0]]]
-                    for als in enriched_context_als:
-                        # go through retrieved alignments and get token IDs from corresponding aligned tokens
-                        if als != [""]:
-                            enriched_context.append(tokens_[als[1]])
+                    enriched_context = get_enriched_context(len_vocab, token2word, tokens_, tokens, converted_als, token_idx, context_start, context_end)
+                    window_ = int(len(enriched_context)/2)
+                    while not enriched_context and window_ < 10:
+                        window_ += 1
+                        enr_context_, context_start, context_end = get_context(window_, token_idx, tokens)
+                        enriched_context = [tok for tok in enr_context_ if token2word[tok]]
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
                 s_t = 0  # if there's no sense training for token, use sense=0 as default
@@ -1012,7 +1033,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                         average = sum_of_vc * math.pow(len(context), -1)
                     except ValueError:
                         print("WINDOW: " + str(window_))
-                        print(str(token2word[tokens[token_idx-4]]) + str(token2word[tokens[token_idx-3]]) + str(token2word[tokens[token_idx-2]]) + str(token2word[tokens[token_idx-1]]) + token2word[token])
+                        print(str(token2word[tokens[token_idx-14]]) + str(token2word[tokens[token_idx-13]]) + str(token2word[tokens[token_idx-12]]) + str(token2word[tokens[token_idx-11]]) + token2word[token])
                     # ########### get nearest sense k (s_t) from sim(my(w_t,k), sum_of_vc) #######
                     maximum = 1.0
                     for k in range(num_of_senses):
@@ -1158,13 +1179,13 @@ def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
 
 def execute_emssg():
     start = time.time()
-    spanish_corpus = "tokenized_es"
+    al_file = "aligned_file"
+    dimension = 50
+    enrich = True
     english_corpus = "tokenized_en"
+    spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    aligned_file = "bigfiles/aligned_file"
-    output_file = emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=aligned_file, dim=100, epochs=5, enriched=True)
-    # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
-    evaluate(output_file, "localSim", enr=True)
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=enrich, trim=100000)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
@@ -1172,12 +1193,9 @@ def execute_emssg():
 def execute_mssg():
     start = time.time()
     dimension = 50
-    enrich = False
-    if enrich: enr = "enr_"
-    else: enr = "not_enr_"
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=enrich, trim=100000)
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=10000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -1203,12 +1221,12 @@ if __name__ == '__main__':
     > check number of epochs(5), dimension(100)
     > check number of senses(2) in emssg()
     > check number of sense filenames in emssg()
-    > check alpha(0.01), window(5), min_count(3)
-    > if enriched: check trim value in function get_alignments (trim=3000)
+    > check alpha(0.01), window(5), min_count(3), decay(0.8)
+    > if enriched: check file parameters for corpus_es, aligned_file, enriched=True
     """
     # pD = PreprocessData()
     # pD.preprocess_data()
     # execute_sg()
     # execute_esg()
-    # execute_emssg()
     execute_mssg()
+    # execute_emssg()
