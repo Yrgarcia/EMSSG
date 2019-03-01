@@ -931,7 +931,7 @@ def get_context(window, token_idx, tokens, rand=True):
 def get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, token_idx, context_start, context_end):
     enriched_context = []
     enriched_context_als_ = converted_als[context_start:token_idx] + converted_als[token_idx + 1:context_end]
-    # english stop words are already not included because ctxt_start and end are reused:
+    # ctxt is already broad enough because ctxt_start and end from en are reused:
     enriched_context_als_t = [tok for tok in enriched_context_als_ if tok[0] != '']
     enriched_context_als = [tok for tok in enriched_context_als_t if token2word[tokens[tok[0]]]]
     for als in enriched_context_als:
@@ -997,13 +997,13 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 if epoch == 0:
                     vector_count[token2word[token]] = temp_fill_dict_vc
                 # Get sg context from context window:
-                context_, context_start, context_end = get_context(window, token_idx, tokens, rand=False)
+                context_, context_start, context_end = get_context(window, token_idx, tokens)
                 # Remove stop words from context and refill while empty:
                 context = [tok for tok in context_ if token2word[tok]]
                 window_ = int(len(context_)/2)
                 while not context and window_ < 10:
                     window_ += 1
-                    context_, context_start, context_end = get_context(window_, token_idx, tokens)
+                    context_, context_start, context_end = get_context(window_, token_idx, tokens, rand=False)
                     context = [tok for tok in context_ if token2word[tok]]
                 # ENR: get enriched context and unify
                 if enriched:
@@ -1173,7 +1173,7 @@ def execute_emssg():
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=enrich, trim=10000)
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=enrich, trim=40000)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
@@ -1183,7 +1183,7 @@ def execute_mssg():
     dimension = 50
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=10000)
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=40000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -1216,5 +1216,5 @@ if __name__ == '__main__':
     # pD.preprocess_data()
     # execute_sg()
     # execute_esg()
-    # execute_mssg()
-    execute_emssg()
+    execute_mssg()
+    # execute_emssg()

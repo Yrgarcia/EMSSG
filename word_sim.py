@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Evaluation for trained word embeddings with multiple senses.
+@author: Yoalli García
+"""
 import codecs
 import numpy as np
 import scipy.spatial.distance
