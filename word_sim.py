@@ -231,7 +231,7 @@ class MSEmbeddings:
         similarity = np.dot(self.sense_dict[w][k], self.sense_dict[w_][k_]) / (np.linalg.norm(self.sense_dict[w][k]) * np.linalg.norm(self.sense_dict[w_][k_]))
         return similarity
 
-    def eval_on_multiple(self, eval_file, sim_type="global"):
+    def eval_on_multiple(self, eval_file, sim_type="globalSim"):
         ws353_pairs = {}
         with open(eval_file) as ws353:
             lines = ws353.readlines()
@@ -242,22 +242,24 @@ class MSEmbeddings:
 
         my_scores = []
         gold_scores = []
-
+        not_found = 0
         for pairs, score in zip(ws353_pairs.keys(), ws353_pairs.values()):
             try:
-                if sim_type == "global":
-                    print("\nMy score " + str((self.global_sim(pairs[0], pairs[1])) * 10))
+                if sim_type == "globalSim":
+                    # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1])) * 10))
+                    my_scores.append((self.global_sim(pairs[0], pairs[1])) * 10)
                 elif sim_type == "avgSim":
-                    print("\nMy score " + str((self.avg_sim(pairs[0], pairs[1])) * 10))
-                print("\nScore for " + str(pairs) + ": " + str(score))
-                print("\n=================================================")
+                    my_scores.append((self.avg_sim(pairs[0], pairs[1])) * 10)
+                # print("\nScore for " + str(pairs) + ": " + str(score))
+                # print("\n=================================================")
                 gold_scores.append(score)
-                my_scores.append((self.global_sim(pairs[0], pairs[1])) * 10)
             except KeyError:
-                print("\nNot found")
+                # print("\nNot found")
+                not_found += 1
         # print len(gold_scores)
         # print len(my_scores)
-        print("\n Spearman Correlation: " + str(spearmanr(my_scores, gold_scores)))
+        print("\n Not found pairs: " + str(not_found))
+        print("\n Spearman Correlation for " + sim_type + ": " + str(spearmanr(my_scores, gold_scores)))
 
     def calculate_ctxt_vecs_for_scws(self, contexts):
         # The target word is surrounded by <b>...</b> in its context.
@@ -357,5 +359,12 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 
 
 if __name__ == '__main__':
-    # evaluate("TEST", sim_type="localSim", sense_files=["not_enr_SENSES_0", "not_enr_SENSES_1"])
+    #evaluate("BASICoutput-tokenized_en-5-100-3", sim_type="globalSim") # , sense_files=["not_enr_SENSES_0", "not_enr_SENSES_1"])
+    # evaluate("GENSIM_embs", sim_type="globalSim")
+    emb = MSEmbeddings(emb_file="GENSIM_embs", sense_files=[])
+    emb.eval_on_multiple("WS-353/combined.tab")
+   # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
+    emb = MSEmbeddings(emb_file="BASICoutput-tokenized_en-5-100-3", sense_files=[])
+    emb.eval_on_multiple("WS-353/combined.tab")
+   # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
     pass
