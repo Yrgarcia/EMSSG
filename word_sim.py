@@ -231,6 +231,16 @@ class MSEmbeddings:
         similarity = np.dot(self.sense_dict[w][k], self.sense_dict[w_][k_]) / (np.linalg.norm(self.sense_dict[w][k]) * np.linalg.norm(self.sense_dict[w_][k_]))
         return similarity
 
+    def max_sim(self, w, w_):
+        similarity = 0.0
+        for i in range(self.k_senses):
+            for j in range(self.k_senses):
+                new_sim = np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (
+                            np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
+                if new_sim > similarity:
+                    similarity = new_sim
+        return similarity
+
     def eval_on_multiple(self, eval_file, sim_type="globalSim"):
         ws353_pairs = {}
         with open(eval_file) as ws353:
@@ -248,6 +258,8 @@ class MSEmbeddings:
                 if sim_type == "globalSim":
                     # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1])) * 10))
                     my_scores.append((self.global_sim(pairs[0], pairs[1])) * 10)
+                elif sim_type == "maxSim":
+                    my_scores.append((self.max_sim(pairs[0], pairs[1])) * 10)
                 elif sim_type == "avgSim":
                     my_scores.append((self.avg_sim(pairs[0], pairs[1])) * 10)
                 # print("\nScore for " + str(pairs) + ": " + str(score))
@@ -258,8 +270,9 @@ class MSEmbeddings:
                 not_found += 1
         # print len(gold_scores)
         # print len(my_scores)
-        print("\n Found pairs in WS-353: " + str(353 - not_found) + " of " + str(353))
-        print("\n Spearman Correlation for: " + sim_type + ": " + str(spearmanr(my_scores, gold_scores)))
+        print("Found pairs in WS-353: " + str(353 - not_found) + " of " + str(353))
+        print("Spearman Correlation for " + sim_type + " on WS-353: " + str(spearmanr(my_scores, gold_scores)))
+        print("________________________________________________________")
 
     def calculate_ctxt_vecs_for_scws(self, contexts):
         # The target word is surrounded by <b>...</b> in its context.
@@ -312,6 +325,8 @@ class MSEmbeddings:
                 if sim_type == "globalSim":
                     # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1]))*10))
                     my_scores.append((self.global_sim(pairs[0], pairs[1])) * 10)
+                elif sim_type == "maxSim":
+                    my_scores.append((self.max_sim(pairs[0], pairs[1])) * 10)
                 elif sim_type == "avgSim":
                     # print("\nMy score " + str((self.avg_sim(pairs[0], pairs[1])) * 10))
                     my_scores.append((self.avg_sim(pairs[0], pairs[1])) * 10)
@@ -328,12 +343,13 @@ class MSEmbeddings:
 
             except KeyError:
                 not_found += 1
-        print("found: " + str(len(lines) - not_found) + " of " + str(len(lines)))
+        print("\nFound: " + str(len(lines) - not_found) + " of " + str(len(lines)))
         my_scores = list(map(float, my_scores))
         # print(my_scores)
         gold_scores = list(map(float, gold_scores))
         spear = spearmanr(my_scores, gold_scores)
-        print("\n Spearman Correlation: " + str(spear))
+        print("Spearman Correlation for " + sim_type + " on SCWS: "  + str(spear))
+        print("________________________________________________________")
         spearman_corr = spear[0]
         return spearman_corr
 
@@ -359,9 +375,12 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 
 
 if __name__ == '__main__':
-    #evaluate("BASICoutput-tokenized_en-5-100-3", sim_type="globalSim") # , sense_files=["not_enr_SENSES_0", "not_enr_SENSES_1"])
+    # evaluate("EMSSG-tokenized_en-7-50-2", sim_type="globalSim", sense_files=["enr_SENSES_0", "enr_SENSES_1"])
+    # emb = MSEmbeddings("EMSSG-tokenized_en-7-50-2", ["enr_SENSES_0", "enr_SENSES_1"])
+    # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
     # evaluate("GENSIM_embs", sim_type="globalSim")
-    emb = MSEmbeddings(emb_file="RUN2LOG/MSSG-tokenized_en-7-100-2", sense_files=["RUN2LOG/not_enr_SENSES_0", "RUN2LOG/not_enr_SENSES_1"])
-    emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
-    emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
-    emb.eval_on_scws("SCWS/ratings.txt", "avgSim")
+    # emb = MSEmbeddings(emb_file="RUN2LOG/MSSG-tokenized_en-7-100-2", sense_files=["RUN2LOG/not_enr_SENSES_0", "RUN2LOG/not_enr_SENSES_1"])
+    # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
+    # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
+    # emb.eval_on_scws("SCWS/ratings.txt", "avgSim")
+    pass
