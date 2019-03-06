@@ -582,8 +582,8 @@ class TableForNegativeSamples:
         power = 0.75
         norm = sum([math.pow(t.count, power) for t in vocab]) # Normalizing constants
 
-        table_size = 100000000
-        # table_size = 100
+        # table_size = 100000000
+        table_size = 100
         table = np.zeros(table_size, dtype=np.uint32)
 
         p = 0  # Cumulative probability
@@ -941,13 +941,13 @@ def get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, 
     return enriched_context
 
 
-def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10):
+def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000):
     num_of_senses = 2  # 2; number of senses
     window = 7  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
     min_count = 0  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.01  # 0.01
+    alpha_0 = 0.02  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -977,9 +977,13 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         corpus_ = Corpus([corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_es, trim=trim)
         vocab_ = Vocabulary(corpus_, min_count)
         tokens_ = vocab_.indices(corpus_)
+        enriched_contexts = [[] for _ in range(len(tokens))]
+        for al in converted_als:
+            if al != [""]:
+                enriched_contexts[al[0]].append(tokens_[al[1]] + len(vocab))
+
         # ENR: v_c_ for enriched context vectors:
         np.random.seed(7)
-        len_vocab = len(vocab)
         v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab)+len(vocab_), dim))
         enr = "enr_"
     vector_count = {}  # for counting vectors in iteration
@@ -1007,7 +1011,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     context = [tok for tok in context_ if token2word[tok]]
                 # ENR: get enriched context and unify
                 if enriched:
-                    enriched_context = get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, token_idx, context_start, context_end)
+                    # enriched_context = [x[1]+len_vocab for x in converted_als if x[0] == token_idx]
+                    enriched_context = enriched_contexts[token_idx]
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
                 s_t = 0  # if there's no sense training for token, use sense=0 as default
@@ -1169,11 +1174,10 @@ def execute_emssg():
     start = time.time()
     al_file = "aligned_file"
     dimension = 50
-    enrich = True
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=enrich, trim=40000)
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=15, dim=dimension, enriched=True, trim=10000)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
