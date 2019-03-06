@@ -258,8 +258,8 @@ class MSEmbeddings:
                 not_found += 1
         # print len(gold_scores)
         # print len(my_scores)
-        print("\n Not found pairs: " + str(not_found))
-        print("\n Spearman Correlation for " + sim_type + ": " + str(spearmanr(my_scores, gold_scores)))
+        print("\n Not found pairs: " + str(not_found) + " of " + str(len(ws353_pairs.keys())))
+        print("\n Spearman Correlation for: " + sim_type + ": " + str(spearmanr(my_scores, gold_scores)))
 
     def calculate_ctxt_vecs_for_scws(self, contexts):
         # The target word is surrounded by <b>...</b> in its context.
@@ -361,10 +361,7 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 if __name__ == '__main__':
     #evaluate("BASICoutput-tokenized_en-5-100-3", sim_type="globalSim") # , sense_files=["not_enr_SENSES_0", "not_enr_SENSES_1"])
     # evaluate("GENSIM_embs", sim_type="globalSim")
-    emb = MSEmbeddings(emb_file="GENSIM_embs", sense_files=[])
-    emb.eval_on_multiple("WS-353/combined.tab")
-   # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
-    emb = MSEmbeddings(emb_file="BASICoutput-tokenized_en-5-100-3", sense_files=[])
-    emb.eval_on_multiple("WS-353/combined.tab")
-   # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
-    pass
+    emb = MSEmbeddings(emb_file="MSSG-tokenized_en-7-100-2", sense_files=["not_enr_SENSES_0", "not_enr_SENSES_1"])
+    emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
+    # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
+    # emb.eval_on_scws("SCWS/ratings.txt", "avgSim")
