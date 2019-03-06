@@ -258,7 +258,7 @@ class MSEmbeddings:
                 not_found += 1
         # print len(gold_scores)
         # print len(my_scores)
-        print("\n Found pairs in WS-353: " + str(len(353 - not_found) + " of " + str(353))
+        print("\n Found pairs in WS-353: " + str(353 - not_found) + " of " + str(353))
         print("\n Spearman Correlation for: " + sim_type + ": " + str(spearmanr(my_scores, gold_scores)))
 
     def calculate_ctxt_vecs_for_scws(self, contexts):
