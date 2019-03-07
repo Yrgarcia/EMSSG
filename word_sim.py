@@ -366,12 +366,46 @@ class MSEmbeddings:
         print("Nearest word to '" + w + "' is '" + str(top_word)+ "'.")
         return top_word
 
-    def get_nearest_word_for_senses(self, w):
+    def get_n_nearest_words(self, w, topnum):
+        sim_dict = {}
+        top_words = []
+        for word in self.w2emb.keys():
+            if word == w:
+                continue
+            new_sim = self.global_sim(w, word)
+            sim_dict[new_sim] = word
+        sims = [sim for sim in sim_dict.keys()]
+        sims.sort()
+        for si in sims[-topnum:]:
+            top_words.append(sim_dict[si])
+        top_words.reverse()
+        print("Nearest words to '" + w + "' are '" + str(top_words)+ "'.")
+        return top_words
+
+    def get_n_nearest_words_for_sense(self, w, sense, topnum):
+        sim_dict = {}
+        top_words = []
+
+        for word in self.w2emb.keys():
+            if word == w:
+                continue
+            new_sim = np.dot(self.sense_dict[w][sense], self.w2emb[word]) / (np.linalg.norm(self.sense_dict[w][sense]) * np.linalg.norm(self.w2emb[word]))
+            sim_dict[new_sim] = word
+        sims = [sim for sim in sim_dict.keys()]
+        sims.sort()
+        for si in sims[-topnum:]:
+            top_words.append(sim_dict[si])
+        top_words.reverse()
+        print("Nearest words to '" + w + "' are '" + str(top_words)+ "'.")
+        return top_words
+
+    def get_nearest_word_for_sense(self, w, sense):
         similarity = 0.0
         top_word = ""
         for word, emb in zip(self.w2emb.keys(), self.w2emb.values()):
-            new_sim = self.global_sim(w, word)
+            new_sim = np.dot(self.sense_dict[w][sense], self.w2emb[word]) / (np.linalg.norm(self.sense_dict[w][sense]) * np.linalg.norm(self.w2emb[word]))
             if new_sim > similarity:
+                similarity = new_sim
                 top_word = word
         print("Nearest word to " + w + " is " + str(top_word)+ ".")
         return top_word
@@ -400,7 +434,10 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 if __name__ == '__main__':
     # evaluate("EMSSG-tokenized_en-7-50-2", sim_type="globalSim", sense_files=["enr_SENSES_0", "enr_SENSES_1"])
     # emb = MSEmbeddings("EMSSG-tokenized_en-7-50-2", ["enr_SENSES_0", "enr_SENSES_1"])
-    # emb.get_nearest_word("water")
+    # emb.get_nearest_word("cat")
+    # emb.get_nearest_word_for_sense("forest", 0)
+    # emb.get_n_nearest_words_for_sense("forest", 0, 10)
+    # emb.get_n_nearest_words_for_sense("forest", 1, 10)
     # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
     # evaluate("GENSIM_embs", sim_type="globalSim")
     # emb = MSEmbeddings(emb_file="RUN2LOG/MSSG-tokenized_en-7-100-2", sense_files=["RUN2LOG/not_enr_SENSES_0", "RUN2LOG/not_enr_SENSES_1"])
