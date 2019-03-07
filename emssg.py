@@ -579,20 +579,22 @@ class Vocabulary:
 
 class TableForNegativeSamples:
     def __init__(self, vocab):
+        token2word = create_token2word(vocab)
         power = 0.75
-        norm = sum([math.pow(t.count, power) for t in vocab]) # Normalizing constants
+        norm = sum([math.pow(t.count, power) for t in vocab if token2word[vocab.word_map[t.word]]])  # Normalizing constants
 
-        # table_size = 100000000
-        table_size = 100
+        table_size = 100000000
+        # table_size = 100
         table = np.zeros(table_size, dtype=np.uint32)
 
         p = 0  # Cumulative probability
         i = 0
         for j, word in enumerate(vocab):
-            p += float(math.pow(word.count, power))/norm
-            while i < table_size and float(i) / table_size < p:
-                table[i] = j
-                i += 1
+            if token2word[vocab.word_map[word.word]]:
+                p += float(math.pow(word.count, power))/norm
+                while i < table_size and float(i) / table_size < p:
+                    table[i] = j
+                    i += 1
         self.table = table
 
     def sample(self, count):
@@ -834,7 +836,8 @@ def sigmoid(z):
         return 1 / (1 + math.exp(-z))
 
 
-def save(vocab, nn0, filename):
+def save(vocab, nn0, filename, token2word):
+    # vocab can be either an instance of the vocab class or a dictionary mapping words to their embeddings
     a = {0: 0}
     file_pointer = open(filename, 'w')
     for token, vector in zip(vocab, nn0):
@@ -843,7 +846,11 @@ def save(vocab, nn0, filename):
         else:
             word = token
         vector_str = ' '.join([str(s) for s in vector])
-        file_pointer.write('%s %s\n' % (word, vector_str))
+        if type(vocab) != type(a.keys()):
+            if token2word[vocab.word_map[word]]:
+                file_pointer.write('%s %s\n' % (word, vector_str))
+        else:
+            file_pointer.write('%s %s\n' % (word, vector_str))
     file_pointer.close()
 
 
@@ -1050,7 +1057,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         alpha = 0.8**epoch * alpha_0
 
         # Save context embeddings to file:
-        save(vocab, v_c, embedding_file)
+        save(vocab, v_c, embedding_file, token2word)
         # Evaluate context embeddings:
         sp = evaluate(embedding_file, "globalSim")
         log_spearman(sp, "LOG_%scontext_embs" % enr)
@@ -1079,8 +1086,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 senses0[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][0]
                 senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
 
-        save(senses0.keys(), senses0.values(), "%sSENSES_0" % enr)
-        save(senses1.keys(), senses1.values(), "%sSENSES_1" % enr)
+        save(senses0.keys(), senses0.values(), "%sSENSES_0" % enr, token2word)
+        save(senses1.keys(), senses1.values(), "%sSENSES_1" % enr, token2word)
         # Evaluate sense embeddings:
         spearman = evaluate(embedding_file, "localSim", sense_files=["%sSENSES_0" % enr, "%sSENSES_1" % enr])
         log_spearman(spearman, "LOG_%ssenses" % enr)
@@ -1177,7 +1184,7 @@ def execute_emssg():
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=15, dim=dimension, enriched=True, trim=10000)
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=1000)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
@@ -1187,7 +1194,7 @@ def execute_mssg():
     dimension = 50
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=40000)
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=100000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -1220,5 +1227,5 @@ if __name__ == '__main__':
     # pD.preprocess_data()
     # execute_sg()
     # execute_esg()
-    execute_mssg()
-    # execute_emssg()
+    # execute_mssg()
+    execute_emssg()
