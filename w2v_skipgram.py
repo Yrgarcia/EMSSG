@@ -131,11 +131,6 @@ class Corpus:
                 line += token + ' '
             i += 1
 
-            if i % 10000 == 0:
-                sys.stdout.flush()
-                sys.stdout.write("\rWriting to preprocessed input file")
-
-        sys.stdout.flush()
         print("\rPreprocessed input file written")
 
         filepointer.close()
@@ -192,12 +187,12 @@ class Vocabulary:
         return key in self.word_map
 
     def indices(self, tokens):
-        return [self.word_map[token] if token in self else self.word_map['{rare}'] for token in tokens]
+        return [self.word_map[token] if token in self else self.word_map['UNKNOWN'] for token in tokens]
 
     def filter_for_rare_and_common(self):
         # Remove rare words and sort
         tmp = []
-        tmp.append(Word('{rare}'))
+        tmp.append(Word('UNKNOWN'))
         unk_hash = 0
 
         count_unk = 0
@@ -274,7 +269,7 @@ if __name__ == '__main__':
         # Number of negative examples
         k_negative_sampling = 5
 
-        # Min count for words to be used in the model, else {rare}
+        # Min count for words to be used in the model, else UNKNOWN
         min_count = 3
 
         # Number of word phrase passes
