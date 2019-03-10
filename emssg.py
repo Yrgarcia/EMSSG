@@ -968,8 +968,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     # most_common_preps = vocab.get_most_common_prepositions(100)
     most_common_words = vocab.get_most_common(1000, corpus)
     vector_count = {}  # for counting vectors in iteration
-    for word in most_common_words:
-        vector_count[word] = {0: 0, 1: 0}
+    for word in most_common_words:  # PREPOSITION CHANGE
+        vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
     my_wk = np.full((len(vocab), num_of_senses, dim), 0.5)
@@ -988,7 +988,6 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         for al in converted_als:
             if al != [""]:
                 enriched_contexts[al[0]].append(tokens_[al[1]] + len(vocab))
-
         # ENR: v_c_ for enriched context vectors:
         np.random.seed(7)
         v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab)+len(vocab_), dim))
@@ -1020,7 +1019,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
                 s_t = 0  # if there's no sense training for token, use sense=0 as default
-                if token2word[token] in most_common_words: # vocab.prepositions
+                if token2word[token] in most_common_words:  # PREPOSITION CHANGE
                     # ########### get sum of all context vectors #################################
                     sum_of_vc = np.zeros(dim)
                     for context_word in context:
@@ -1081,7 +1080,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         senses0 = {}
         senses1 = {}
         for i in range(len(vocab.words)):
-            if vocab.words[i].word in most_common_words:
+            if vocab.words[i].word in most_common_words:  # PREPOSITION CHANGE
                 senses0[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][0]
                 senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
 
@@ -1183,7 +1182,7 @@ def execute_emssg():
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=1000)  # max 1965734
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=10000)  # max 1965734
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
@@ -1193,7 +1192,7 @@ def execute_mssg():
     dimension = 50
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=10000)
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=8753)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -1215,6 +1214,7 @@ def execute_sg():
 if __name__ == '__main__':
     """
     Before running: 
+    > check PREPOSITION CHANGE s that need to be done (3 changes)
     > check trim value
     > check number of epochs(5), dimension(100)
     > check number of senses(2) in emssg()

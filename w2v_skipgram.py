@@ -1,3 +1,4 @@
+import time
 import math
 import sys
 import numpy as np
@@ -155,11 +156,11 @@ class Vocabulary:
     def __init__(self, corpus, min_count):
         self.words = []
         self.word_map = {}
-        self.build_words(corpus, min_count)
+        self.build_words(corpus)
 
-        self.filter_for_rare_and_common()
+        self.filter_for_rare_and_common(min_count)
 
-    def build_words(self, corpus, min_count):
+    def build_words(self, corpus):
         words = []
         word_map = {}
 
@@ -189,7 +190,7 @@ class Vocabulary:
     def indices(self, tokens):
         return [self.word_map[token] if token in self else self.word_map['UNKNOWN'] for token in tokens]
 
-    def filter_for_rare_and_common(self):
+    def filter_for_rare_and_common(self, min_count):
         # Remove rare words and sort
         tmp = []
         tmp.append(Word('UNKNOWN'))
@@ -261,79 +262,66 @@ def log_spearman(spearman_corr, filename):
         sl.close()
 
 
+def get_context(tokens, token_idx, window):
+    current_window = np.random.randint(low=1, high=window + 1)
+    context_start = max(token_idx - current_window, 0)
+    context_end = min(token_idx + current_window + 1, len(tokens))
+    context = tokens[context_start:token_idx] + tokens[token_idx + 1:context_end]
+    return context
+
+
+def skip_gram(input_filename):
+    # for input_filename in ['news-2012-phrases-10000.txt']:
+    k_negative_sampling = 5  # Number of negative examples
+    min_count = 3  # Min count for words to be used in the model, else UNKNOWN
+    word_phrase_passes = 3  # 3
+    word_phrase_delta = 3  # 5
+    word_phrase_threshold = 1e-4
+    corpus = Corpus(input_filename, word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % input_filename)
+    # Read train file to init vocab
+    vocab = Vocabulary(corpus, min_count)
+    table = TableForNegativeSamples(vocab)
+    # Max window length
+    window = 5  # 5 for large set
+    dim = 100  # 100
+    print("Training: %s-%d-%d-%d" % (input_filename, window, dim, word_phrase_passes))
+    # Initialize network
+    nn0 = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), dim))
+    nn1 = np.zeros(shape=(len(vocab), dim))
+    # Initial learning rate
+    initial_alpha = 0.02  # 0.01
+    # Modified in loop
+    alpha = initial_alpha
+    tokens = vocab.indices(corpus)
+    epochs = 10
+    for epoch in range(epochs):
+        print("\rTraining epoch %d..." % epoch)
+        for token_idx, token in enumerate(tokens):
+            # Randomize window size, where win is the max window size
+            context = get_context(tokens, token_idx, window)
+            for context_word in context:
+                # Init neu1e with zeros
+                neu1e = np.zeros(dim)
+                classifiers = [(token, 1)] + [(target, 0) for target in table.sample(k_negative_sampling)]
+                for target, label in classifiers:
+                    z = np.dot(nn0[context_word], nn1[target])
+                    p = sigmoid(z)
+                    g = alpha * (label - p)
+                    neu1e += g * nn1[target]  # Error to backpropagate to nn0
+                    nn1[target] += g * nn0[context_word]  # Update nn1
+                # Update nn0
+                nn0[context_word] += neu1e
+        alpha = 0.8 ** epoch * initial_alpha
+        save(vocab, nn0, 'BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes))
+        sp = evaluate('BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes), "globalSim")
+        log_spearman(sp, "LOG_BASIC")
+    # Save model to file
+    save(vocab, nn0, 'BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes))
+
+
 if __name__ == '__main__':
-
-    for input_filename in ['TEST_en']:
-    #for input_filename in ['news-2012-phrases-10000.txt']:
-
-        # Number of negative examples
-        k_negative_sampling = 5
-
-        # Min count for words to be used in the model, else UNKNOWN
-        min_count = 3
-
-        # Number of word phrase passes
-        word_phrase_passes = 3 # 3
-
-        # min count for word phrase formula
-        word_phrase_delta = 3 # 5
-
-        # Threshold for word phrase creation
-        word_phrase_threshold = 1e-4
-
-        # Read the corpus
-        corpus = Corpus(input_filename, word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % input_filename)
-
-        # Read train file to init vocab
-        vocab = Vocabulary(corpus, min_count)
-        table = TableForNegativeSamples(vocab)
-
-        # Max window length
-        for window in [5]: # 5 for large set
-
-            # Dimensionality of word embeddings
-            for dim in [100]: # 100
-
-                print("Training: %s-%d-%d-%d" % (input_filename, window, dim, word_phrase_passes))
-
-                # Initialize network
-                nn0 = np.random.uniform(low=-0.5/dim, high=0.5/dim, size=(len(vocab), dim))
-                nn1 = np.zeros(shape=(len(vocab), dim))
-
-                # Initial learning rate
-                initial_alpha = 0.02  # 0.01
-
-                # Modified in loop
-                alpha = initial_alpha
-                tokens = vocab.indices(corpus)
-
-                for epoch in range(15):
-                    print("\rTraining epoch %d..." % epoch)
-                    for token_idx, token in enumerate(tokens):
-                        # Randomize window size, where win is the max window size
-                        current_window = np.random.randint(low=1, high=window+1)
-                        context_start = max(token_idx - current_window, 0)
-                        context_end = min(token_idx + current_window + 1, len(tokens))
-                        context = tokens[context_start:token_idx] + tokens[token_idx+1:context_end] # Turn into an iterator?
-
-                        for context_word in context:
-                            # Init neu1e with zeros
-                            neu1e = np.zeros(dim)
-                            classifiers = [(token, 1)] + [(target, 0) for target in table.sample(k_negative_sampling)]
-                            for target, label in classifiers:
-                                z = np.dot(nn0[context_word], nn1[target])
-                                p = sigmoid(z)
-                                g = alpha * (label - p)
-                                neu1e += g * nn1[target]              # Error to backpropagate to nn0
-                                nn1[target] += g * nn0[context_word]  # Update nn1
-
-                            # Update nn0
-                            nn0[context_word] += neu1e
-
-                    alpha = 0.8 ** epoch * initial_alpha
-                    save(vocab, nn0, 'BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes))
-                    sp = evaluate('BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes), "globalSim")
-                    log_spearman(sp, "LOG_BASIC")
-                # Save model to file
-                save(vocab, nn0, 'BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes))
+    start = time.time()
+    skip_gram("TEST")
+    end = time.time()
+    print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
