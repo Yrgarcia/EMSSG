@@ -150,6 +150,7 @@ class PreprocessData:
 
 
 def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", new_file="TEST_corpus_en"):
+    # generate a corpus that only contains sentences that contain at least one word from the eval file
     words = []
     with open(eval_data) as scws:
         lines = scws.readlines()
@@ -169,8 +170,24 @@ def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", 
     return new_file
 
 
+def preprocess_wiki_corpus(file_in, file_out):
+    f = codecs.open(file_in, "r", "utf-8")
+    lines = f.readlines()
+    tok_lines = []
+    for line in lines:
+        if line == "---END.OF.DOCUMENT---\n":
+            continue
+        else:
+            tok_lines.append(word_tokenize(line))
+    with codecs.open(file_out, "w", "utf-8") as f_out:
+        for line in tok_lines:
+            f_out.write(" ".join(line))
+            f_out.write("\n")
+        f_out.close()
+
 if __name__ == '__main__':
-    generate_test_corpus()
+    preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT")
+    # generate_test_corpus()
     #pD = PreprocessData()
     #pD.preprocess_data()
 

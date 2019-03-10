@@ -1053,6 +1053,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         # update learning rate
         alpha = 0.8**epoch * alpha_0
 
+        print(vector_count)
+
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file, token2word)
         # Evaluate context embeddings:
