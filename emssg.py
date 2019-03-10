@@ -884,14 +884,11 @@ def calc_my_update(current_vector_count, curr_my, average):
 
 
 def get_nearest_my(old_my, average, maximum, k):
-    if old_my.all() == 0.0:
+    new_max = cosine(old_my, average)
+    max_k = 0
+    if new_max <= maximum:
+        maximum = new_max
         max_k = k
-    else:
-        new_max = cosine(old_my, average)
-        max_k = 0
-        if new_max <= maximum:
-            maximum = new_max
-            max_k = k
     return maximum, max_k
 
 
@@ -952,7 +949,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     num_of_senses = 2  # 2; number of senses
     window = 7  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
     alpha_0 = 0.02  # 0.01
     alpha = alpha_0
@@ -970,9 +967,12 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     token2word = create_token2word(vocab)
     # most_common_preps = vocab.get_most_common_prepositions(100)
     most_common_words = vocab.get_most_common(1000, corpus)
+    vector_count = {}  # for counting vectors in iteration
+    for word in most_common_words:
+        vector_count[word] = {0: 0, 1: 0}
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
-    my_wk = np.zeros(shape=(len(vocab), num_of_senses, dim))
+    my_wk = np.full((len(vocab), num_of_senses, dim), 0.5)
     np.random.seed(3)
     v_s_wk = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), num_of_senses, dim))
     np.random.seed(7)
@@ -993,7 +993,6 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         np.random.seed(7)
         v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab)+len(vocab_), dim))
         enr = "enr_"
-    vector_count = {}  # for counting vectors in iteration
     temp_fill_dict_vc = {}  # temp dict for filling vector_count
     mys = []  # for saving mys to file
     # Fill mys and a temporary dict for later use (vector_count)
@@ -1005,8 +1004,6 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         print(enr + "EPOCH: " + str(epoch))
         for token_idx, token in enumerate(tokens):
             if token2word[token]:
-                if epoch == 0:
-                    vector_count[token2word[token]] = temp_fill_dict_vc
                 # Get sg context from context window:
                 context_, context_start, context_end = get_context(window, token_idx, tokens)
                 # Remove stop words from context and refill while empty:
@@ -1023,7 +1020,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
                 s_t = 0  # if there's no sense training for token, use sense=0 as default
-                if token2word[token] in most_common_words:
+                if token2word[token] in most_common_words: # vocab.prepositions
                     # ########### get sum of all context vectors #################################
                     sum_of_vc = np.zeros(dim)
                     for context_word in context:
@@ -1035,7 +1032,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                         print("WINDOW: " + str(window_))
                         print(str(token2word[tokens[token_idx-14]]) + str(token2word[tokens[token_idx-13]]) + str(token2word[tokens[token_idx-12]]) + str(token2word[tokens[token_idx-11]]) + token2word[token])
                     # ########### get nearest sense k (s_t) from sim(my(w_t,k), sum_of_vc) #######
-                    maximum = 1.0
+                    maximum = 2.0
                     for k in range(num_of_senses):
                         old_my = my_wk[token][k]  # get old cluster centre
                         # look for nearest my(token, k), that is: max(my(token,k) * average)
@@ -1047,7 +1044,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     curr_my = my_wk[token][s_t]
                     product = calc_my_update(current_vector_count, curr_my, average)
                     my_wk[token][s_t] = product
-                    mys[s_t][token] = product
+                    # mys[s_t][token] = product
                     vector_count[token2word[token]][s_t] += 1
 
 # ###################################### GRADIENT UPDATE #################################################
@@ -1184,7 +1181,7 @@ def execute_emssg():
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=1000)
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=1000)  # max 1965734
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
@@ -1194,7 +1191,7 @@ def execute_mssg():
     dimension = 50
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=100000)
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=10000)
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -1227,5 +1224,5 @@ if __name__ == '__main__':
     # pD.preprocess_data()
     # execute_sg()
     # execute_esg()
-    # execute_mssg()
-    execute_emssg()
+    execute_mssg()
+    # execute_emssg()
