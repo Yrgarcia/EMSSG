@@ -170,9 +170,10 @@ def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", 
     return new_file
 
 
-def preprocess_wiki_corpus(file_in, file_out):
+def preprocess_wiki_corpus(file_in, file_out, trim=1000000):
     f = codecs.open(file_in, "r", "utf-8")
-    lines = f.readlines()
+    lines = [next(f) for x in range(trim)]
+    print(lines[-1])
     tok_lines = []
     for line in lines:
         if line == "---END.OF.DOCUMENT---\n":
@@ -185,8 +186,9 @@ def preprocess_wiki_corpus(file_in, file_out):
             f_out.write("\n")
         f_out.close()
 
+
 if __name__ == '__main__':
-    preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT")
+    preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT", 1000)
     # generate_test_corpus()
     #pD = PreprocessData()
     #pD.preprocess_data()
