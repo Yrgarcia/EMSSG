@@ -410,6 +410,13 @@ class MSEmbeddings:
         print("Nearest word to " + w + " is " + str(top_word)+ ".")
         return top_word
 
+    def get_all_nearest(self, w):
+        self.get_nearest_word(w)
+        self.get_n_nearest_words(w, 10)
+        self.get_nearest_word_for_sense(w, 0)
+        self.get_n_nearest_words_for_sense(w, 0, 10)
+        self.get_n_nearest_words_for_sense(w, 1, 10)
+
 
 def extract_embs_from_file(filename):
     # get embeddings from a file
