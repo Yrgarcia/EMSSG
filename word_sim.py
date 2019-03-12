@@ -369,7 +369,7 @@ class MSEmbeddings:
         for word in self.w2emb.keys():
             if word == w:
                 continue
-            new_sim = self.euclidean_distance(self.w2emb[w], self.w2emb[word])
+            new_sim = scipy.spatial.distance.cosine(self.w2emb[w], self.w2emb[word])
             if new_sim > similarity:
                 similarity = new_sim
                 top_word = word
@@ -382,13 +382,14 @@ class MSEmbeddings:
         for word in self.w2emb.keys():
             if word == w:
                 continue
-            new_sim = self.euclidean_distance(self.w2emb[w], self.w2emb[word])
+            new_sim = scipy.spatial.distance.cosine(self.w2emb[w], self.w2emb[word])
             sim_dict[new_sim] = word
         sims = [sim for sim in sim_dict.keys()]
         sims.sort()
-        for si in sims[-topnum:]:
+        #for si in sims[-topnum:]:
+        for si in sims[:topnum]:
             top_words.append(sim_dict[si])
-        top_words.reverse()
+        #top_words.reverse()
         print("Nearest words to '" + w + "' are '" + str(top_words)+ "'.")
         return top_words
 
@@ -399,13 +400,14 @@ class MSEmbeddings:
         for word in self.w2emb.keys():
             if word == w:
                 continue
-            new_sim = self.euclidean_distance(self.sense_dict[w][sense], self.w2emb[word])
+            new_sim = scipy.spatial.distance.cosine(self.sense_dict[w][sense], self.w2emb[word])
             sim_dict[new_sim] = word
         sims = [sim for sim in sim_dict.keys()]
         sims.sort()
-        for si in sims[-topnum:]:
+        #for si in sims[-topnum:]:
+        for si in sims[:topnum]:
             top_words.append(sim_dict[si])
-        top_words.reverse()
+        #top_words.reverse()
         print("Nearest words to '" + w + "' are '" + str(top_words)+ "'.")
         return top_words
 
@@ -413,7 +415,7 @@ class MSEmbeddings:
         similarity = 0.0
         top_word = ""
         for word, emb in zip(self.w2emb.keys(), self.w2emb.values()):
-            new_sim = self.euclidean_distance(self.sense_dict[w][sense], self.w2emb[word])
+            new_sim = scipy.spatial.distance.cosine(self.sense_dict[w][sense], self.w2emb[word])
             if new_sim > similarity:
                 similarity = new_sim
                 top_word = word
