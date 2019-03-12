@@ -786,7 +786,7 @@ def get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, 
     return enriched_context
 
 
-def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000, use_prepositions=False):
+def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000):
     num_of_senses = 2  # 2; number of senses
     window = 7  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
@@ -806,16 +806,11 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
     token2word = create_token2word(vocab)
+    # most_common_preps = vocab.get_most_common_prepositions(100)
     most_common_words = vocab.get_most_common(1000, corpus)
     vector_count = {}  # for counting vectors in iteration
-
-    if use_prepositions:
-        words_for_sense_training = vocab.prepositions
-    else:
-        words_for_sense_training = most_common_words
-
-    for word in words_for_sense_training:  # PREPOSITION CHANGE
-            vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
+    for word in most_common_words:  # PREPOSITION CHANGE
+        vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
     my_wk = np.full((len(vocab), num_of_senses, dim), 0.5)
@@ -865,7 +860,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
                 s_t = 0  # if there's no sense training for token, use sense=0 as default
-                if token2word[token] in words_for_sense_training:  # PREPOSITION CHANGE
+                if token2word[token] in most_common_words:  # PREPOSITION CHANGE
                     # ########### get sum of all context vectors #################################
                     sum_of_vc = np.zeros(dim)
                     for context_word in context:
@@ -926,7 +921,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         senses0 = {}
         senses1 = {}
         for i in range(len(vocab.words)):
-            if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
+            if vocab.words[i].word in most_common_words:  # PREPOSITION CHANGE
                 senses0[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][0]
                 senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
 
