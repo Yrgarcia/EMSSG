@@ -1,11 +1,8 @@
 import math
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
 import time
-from preprocessData import PreprocessData
 from word_sim import evaluate
-from word_sim import extract_embs_from_file
 from scipy.spatial.distance import cosine
 
 
@@ -376,7 +373,8 @@ class Vocabulary:
 
         word_count_pairs = []
         for word in self.words:
-            if word.word in eval_words and word.word not in corpus.notalnums and word.word not in self.stopwords and word.word != "UNKNOWN" and word.word not in self.prepositions:
+            # if word.word in eval_words and
+            if word.word not in corpus.notalnums and word.word not in self.stopwords and word.word != "UNKNOWN" and word.word not in self.prepositions:
                 temp = (word.word, word.count)
                 word_count_pairs.append(temp)
         top_x = word_count_pairs[:top_num]
@@ -449,161 +447,6 @@ class TableForNegativeSamples:
 class Alignments:
     def __init__(self, filename, corpus_en, corpus_es, trim=3000):
         self.alignments = self.convert_alignments(self.get_alignments(filename, trim), corpus_en, corpus_es)
-        self.stopwords = ['a',
-                          'ain',
-                          'all',
-                          "also",
-                          'am',
-                          'an',
-                          'and',
-                          'any',
-                          'are',
-                          'aren',
-                          "aren't",
-                          "as",
-                          'be',
-                          'because',
-                          'been',
-                          'being',
-                          'both',
-                          'can',
-                          'couldn',
-                          "couldn't",
-                          'd',
-                          'did',
-                          'didn',
-                          "didn't",
-                          'do',
-                          'does',
-                          'doesn',
-                          "doesn't",
-                          'doing',
-                          'don',
-                          "don't",
-                          'each',
-                          'few',
-                          'further',
-                          'had',
-                          'hadn',
-                          "hadn't",
-                          'has',
-                          'hasn',
-                          "hasn't",
-                          'have',
-                          'haven',
-                          "haven't",
-                          'having',
-                          'he',
-                          'her',
-                          'here',
-                          'hers',
-                          'herself',
-                          'him',
-                          'himself',
-                          'his',
-                          'how',
-                          'i',
-                          'if',
-                          'is',
-                          'isn',
-                          "isn't",
-                          'it',
-                          "it's",
-                          'its',
-                          'itself',
-                          'just',
-                          'll',
-                          'm',
-                          'ma',
-                          'me',
-                          "might",
-                          'mightn',
-                          "mightn't",
-                          'more',
-                          'most',
-                          "must",
-                          'mustn',
-                          "mustn't",
-                          'my',
-                          'myself',
-                          "need",
-                          'needn',
-                          "needn't",
-                          'no',
-                          'nor',
-                          'not',
-                          'o',
-                          'only',
-                          'or',
-                          'other',
-                          'our',
-                          'ours',
-                          'ourselves',
-                          'own',
-                          're',
-                          's',
-                          'same',
-                          "shall",
-                          'shan',
-                          "shan't",
-                          'she',
-                          "she's",
-                          'should',
-                          "should've",
-                          'shouldn',
-                          "shouldn't",
-                          'so',
-                          'some',
-                          'such',
-                          't',
-                          'than',
-                          'that',
-                          "that'll",
-                          'the',
-                          'their',
-                          'theirs',
-                          'them',
-                          'themselves',
-                          'then',
-                          'there',
-                          'these',
-                          'they',
-                          'this',
-                          'those',
-                          'too',
-                          "us",
-                          've',
-                          'very',
-                          'was',
-                          'wasn',
-                          "wasn't",
-                          'we',
-                          'were',
-                          'weren',
-                          "weren't",
-                          'what',
-                          "when",
-                          'where',
-                          'which',
-                          'who',
-                          'whom',
-                          'why',
-                          'will',
-                          'won',
-                          "won't",
-                          "would",
-                          'wouldn',
-                          "wouldn't",
-                          'y',
-                          'you',
-                          "you'd",
-                          "you'll",
-                          "you're",
-                          "you've",
-                          'your',
-                          'yours',
-                          'yourself',
-                          'yourselves']
 
     def get_alignments(self, filename, trim=3000):
         # extract alignments from the fast_align output file
@@ -707,7 +550,7 @@ def get_prepositions(filename):
 
 def create_token2word(vocab):
     token2word = {}
-    stop = vocab.stopwords + list(set(vocab.notalnums))
+    stop = vocab.stopwords + list(set(vocab.notalnums)) + vocab.prepositions
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
         if val not in stop:
             token2word[key] = val
@@ -786,13 +629,13 @@ def get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, 
     return enriched_context
 
 
-def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000):
+def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000, use_prepositions=False):
     num_of_senses = 2  # 2; number of senses
-    window = 7  # Max window length: 5 for large set(excluding stop words)
+    window = 5  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 10  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.02  # 0.01
+    alpha_0 = 0.1  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     old_spearman = 0  # for best sense spearman
@@ -806,14 +649,19 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
     token2word = create_token2word(vocab)
-    # most_common_preps = vocab.get_most_common_prepositions(100)
     most_common_words = vocab.get_most_common(1000, corpus)
     vector_count = {}  # for counting vectors in iteration
-    for word in most_common_words:  # PREPOSITION CHANGE
-        vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
+
+    if use_prepositions:
+        words_for_sense_training = vocab.prepositions
+    else:
+        words_for_sense_training = most_common_words
+
+    for word in words_for_sense_training:  # PREPOSITION CHANGE
+            vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
-    my_wk = np.full((len(vocab), num_of_senses, dim), 0.5)
+    my_wk = np.full((len(vocab), num_of_senses, dim), 0.1)
     np.random.seed(3)
     v_s_wk = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), num_of_senses, dim))
     np.random.seed(7)
@@ -860,7 +708,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
                 s_t = 0  # if there's no sense training for token, use sense=0 as default
-                if token2word[token] in most_common_words:  # PREPOSITION CHANGE
+                if token2word[token] in words_for_sense_training:  # PREPOSITION CHANGE
                     # ########### get sum of all context vectors #################################
                     sum_of_vc = np.zeros(dim)
                     for context_word in context:
@@ -884,33 +732,40 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     curr_my = my_wk[token][s_t]
                     product = calc_my_update(current_vector_count, curr_my, average)
                     my_wk[token][s_t] = product
-                    # mys[s_t][token] = product
+                    mys[s_t][token] = product
                     vector_count[token2word[token]][s_t] += 1
-
 # ###################################### GRADIENT UPDATE #################################################
                 v_c, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha)
 
         # update learning rate
-        alpha = 0.8**epoch * alpha_0
+        alpha = 0.95**epoch * alpha_0
 
         print(vector_count)
-
+        #plot("ask", count_ctxt_words_for_principle_0, count_ctxt_words_for_principle_1, embedding_file)
         # Save context embeddings to file:
         save(vocab, v_c, embedding_file, token2word)
         # Evaluate context embeddings:
         sp = evaluate(embedding_file, "globalSim")
         log_spearman(sp, "LOG_%scontext_embs" % enr)
+
         # save best embeddings to BEST_MSSG_embs
         # if sp > old_sp_ctxt:
         #   old_sp_ctxt = sp
         #   save(vocab, v_c, "BEST_" + embedding_file)
 
-        # # Save cluster centres to files
-        # for k in range(num_of_senses):
-        #     save(vocab, mys[k], enr + "MYS_" + str(k))
-        # # Evaluate sense embeddings:
-        # sp_my = evaluate("BEST_" + embedding_file, "localSim", enr=False, sense_files=["not_enr_MYS_0", "not_enr_MYS_1"])
-        # log_spearman(sp_my, "LOG_" + enr + "MYS")
+        # Save cluster centres to files
+        # mys0 = {}
+        # mys1 = {}
+        # for i in range(len(vocab.words)):
+        #     if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
+        #         mys0[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][0]
+        #         mys1[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][1]
+        # save(mys0.keys(), mys0.values(), "%sMYS_0" % enr, token2word)
+        # save(mys1.keys(), mys1.values(), "%sMYS_1" % enr, token2word)
+
+        # Evaluate my cluster:
+        #sp_my = evaluate("BEST_" + embedding_file, "localSim", sense_files=["not_enr_MYS_0", "not_enr_MYS_1"])
+        #log_spearman(sp_my, "LOG_" + enr + "MYS")
         # # save best senses to BEST_MYS_*
         # if sp_my > old_sp_my:
         #     old_sp_my = sp_my
@@ -921,7 +776,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         senses0 = {}
         senses1 = {}
         for i in range(len(vocab.words)):
-            if vocab.words[i].word in most_common_words:  # PREPOSITION CHANGE
+            if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
                 senses0[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][0]
                 senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
 
@@ -938,44 +793,6 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         print("\n===========================================================")
     # return v_s_wk, v_c, my_wk  # ENR: return v_c_
     return embedding_file
-
-
-def normalize(v):
-    norm = np.linalg.norm(v)
-    if norm == 0:
-        return v
-    return v / norm
-
-
-def plot_senses(sense_dict):
-    # plot 2D embeddings to compare senses
-    V = []
-    plot_dict = {}
-    cmap = plt.get_cmap('jet')
-    colors = cmap(np.linspace(0, 1.0, len(sense_dict.keys())))
-    markers = [".", "o", "v", "^", "<", ">", "8", "s", "p", "P", "*", "h", "H", "+", "x", "X", "D", "d"]
-    i = 0
-    while markers.__len__() != len(sense_dict.keys()):
-        if i > len(markers):
-            i = 0
-        markers.append(markers[i])
-        i += 1
-    #print(markers)
-    for word in sense_dict:
-        plot_dict[word] = {}
-        y = []
-        x = []
-        for sense in sense_dict[word]:
-            t = sense_dict[word][sense]
-            V.append(t)
-            x.append(t[0])
-            y.append(t[1])
-        plot_dict[word]["x"] = x
-        plot_dict[word]["y"] = y
-    for i, color, marker in zip(plot_dict, colors, markers):
-        plt.scatter(plot_dict[i]["x"], plot_dict[i]["y"], label=i, c = color, marker = marker)
-    plt.legend(ncol=2)
-    plt.show()
 
 
 def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
@@ -1019,21 +836,21 @@ def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
 def execute_emssg():
     start = time.time()
     al_file = "aligned_file"
-    dimension = 50
+    dimension = 100
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=10000)  # max 1965734
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=15, dim=dimension, enriched=True, trim=20000)  # max 1965734
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
 
 def execute_mssg():
     start = time.time()
-    dimension = 50
+    dimension = 100
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=8753)
+    emssg(english_corpus, epochs=15, dim=dimension, enriched=False, trim=20000)  # max 1965734
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -1067,5 +884,5 @@ if __name__ == '__main__':
     # pD.preprocess_data()
     # execute_sg()
     # execute_esg()
-    execute_mssg()
-    # execute_emssg()
+    # execute_mssg()
+    execute_emssg()

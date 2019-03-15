@@ -364,13 +364,13 @@ class MSEmbeddings:
         return dist
 
     def get_nearest_word(self, w):
-        similarity = 0.0
+        similarity = 2.0
         top_word = ""
         for word in self.w2emb.keys():
             if word == w:
                 continue
             new_sim = scipy.spatial.distance.cosine(self.w2emb[w], self.w2emb[word])
-            if new_sim > similarity:
+            if new_sim < similarity:
                 similarity = new_sim
                 top_word = word
         print("Nearest word to '" + w + "' is '" + str(top_word)+ "'.")
@@ -412,11 +412,11 @@ class MSEmbeddings:
         return top_words
 
     def get_nearest_word_for_sense(self, w, sense):
-        similarity = 0.0
+        similarity = 2.0
         top_word = ""
         for word, emb in zip(self.w2emb.keys(), self.w2emb.values()):
             new_sim = scipy.spatial.distance.cosine(self.sense_dict[w][sense], self.w2emb[word])
-            if new_sim > similarity:
+            if new_sim < similarity:
                 similarity = new_sim
                 top_word = word
         print("Nearest word to " + w + " is " + str(top_word)+ ".")
@@ -453,14 +453,9 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 
 if __name__ == '__main__':
     # evaluate("EMSSG-tokenized_en-7-50-2", sim_type="globalSim", sense_files=["enr_SENSES_0", "enr_SENSES_1"])
-    emb = MSEmbeddings("MSSG-TEST_en-5-2-2", ["not_enr_SENSES_0", "not_enr_SENSES_1"])
-    emb.get_all_nearest("apple")
-    # emb.get_nearest_word_for_sense("forest", 0)
-    # emb.get_n_nearest_words_for_sense("forest", 0, 10)
-    # emb.get_n_nearest_words_for_sense("forest", 1, 10)
-    # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
     # evaluate("GENSIM_embs", sim_type="globalSim")
-    # emb = MSEmbeddings(emb_file="RUN2LOG/MSSG-tokenized_en-7-100-2", sense_files=["RUN2LOG/not_enr_SENSES_0", "RUN2LOG/not_enr_SENSES_1"])
+    # emb = MSEmbeddings("MSSG-TEST_en-5-100-2", ["not_enr_SENSES_0", "not_enr_SENSES_1"])
+    # emb.get_all_nearest("european")
     # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
     # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
     # emb.eval_on_scws("SCWS/ratings.txt", "avgSim")
