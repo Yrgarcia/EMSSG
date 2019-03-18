@@ -548,7 +548,22 @@ def get_prepositions(filename):
     return prepositions
 
 
-def create_token2word(vocab):
+def create_token2word(vocab, use_prepositions=False):
+    token2word = {}
+    if use_prepositions:
+        stop = vocab.stopwords + list(set(vocab.notalnums))
+    else:
+        stop = vocab.stopwords + list(set(vocab.notalnums)) + vocab.prepositions
+    for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
+        if val not in stop:
+            token2word[key] = val
+        else:
+            # add False value to filter out stop words while training
+            token2word[key] = False
+    return token2word
+
+
+def check_for_sw(vocab):
     token2word = {}
     stop = vocab.stopwords + list(set(vocab.notalnums)) + vocab.prepositions
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
@@ -633,7 +648,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     num_of_senses = 2  # 2; number of senses
     window = 5  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 10  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
     alpha_0 = 0.1  # 0.01
     alpha = alpha_0
@@ -648,14 +663,16 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     vocab = Vocabulary(corpus, min_count)
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
-    token2word = create_token2word(vocab)
-    most_common_words = vocab.get_most_common(1000, corpus)
+    token2word = create_token2word(vocab, use_prepositions)
+    most_common_words = vocab.get_most_common(2000, corpus)
     vector_count = {}  # for counting vectors in iteration
 
     if use_prepositions:
         words_for_sense_training = vocab.prepositions
+        is_not_stopword = check_for_sw(vocab)
     else:
         words_for_sense_training = most_common_words
+        is_not_stopword = token2word
 
     for word in words_for_sense_training:  # PREPOSITION CHANGE
             vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
@@ -695,7 +712,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 # Get sg context from context window:
                 context_, context_start, context_end = get_context(window, token_idx, tokens)
                 # Remove stop words from context and refill while empty:
-                context = [tok for tok in context_ if token2word[tok]]
+                context = [tok for tok in context_ if is_not_stopword[tok]]
                 window_ = int(len(context_)/2)
                 while not context and window_ < 10:
                     window_ += 1
@@ -847,10 +864,10 @@ def execute_emssg():
 
 def execute_mssg():
     start = time.time()
-    dimension = 100
+    dimension = 50
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=15, dim=dimension, enriched=False, trim=20000)  # max 1965734
+    emssg(english_corpus, epochs=15, dim=dimension, enriched=False, trim=10000, use_prepositions=True)  # max 1965734
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -884,5 +901,5 @@ if __name__ == '__main__':
     # pD.preprocess_data()
     # execute_sg()
     # execute_esg()
-    # execute_mssg()
-    execute_emssg()
+    execute_mssg()
+    # execute_emssg()
