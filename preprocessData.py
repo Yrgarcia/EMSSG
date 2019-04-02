@@ -35,7 +35,7 @@ class PreprocessData:
         for sent in self.lines_es:
             self.tokenizedLines_es.append(word_tokenize(sent))
 
-    def add_pos_tags(self):
+    def add_pos_tags(self, taglang="es"):
         print("Adding POS-Tags...")
         pos_tagged_sents = pos_tag_sents(self.tokenizedLines_en)
         # pos_tagged_sents = [[(w1,tag1),(w2,tag2)],[(w1,t2),(w2,t2),...]...]
@@ -45,7 +45,7 @@ class PreprocessData:
                 temp = word[0] + word[1]
                 fo.append(temp)
             self.pos_tagged_sents_en.append(fo)  # -> [["w1t1","w2t2",...],["w1t1",...],...]
-        tagger = TreeTagger(TAGLANG='es')
+        tagger = TreeTagger(TAGLANG=taglang)
         pos_tagged_sents = []
         for line in self.tokenizedLines_es:
             if "EE.UU" in line:
@@ -128,24 +128,25 @@ class PreprocessData:
                     te.write(" ".join(line))
                     te.write("\n")
                 te.close()
-            elif lang == "es":
+            elif lang == "es" or lang == "sv":
                 for line in self.tokenizedLines_es:
                     te.write(" ".join(line))
                     te.write("\n")
                 te.close()
 
     def preprocess_data(self):
+        taglang = "sv"
         en_data = "input_en"
-        es_data = "input_es"
+        es_data = "input_" + taglang
         tokenized_file_en = "tokenized_en"
-        tokenized_file_es = "tokenized_es"
+        tokenized_file_es = "tokenized_" + taglang
         output_fast_align = "aligned_file"
         path_fast_align = "fast_align/build/fast_align"
         temp_file_for_fast_align = "file_for_fast_align"
         self.read_file_and_tokenize_lines(en_data, es_data)
         self.save_tokenized_file(tokenized_file_en, "en")
-        self.save_tokenized_file(tokenized_file_es, "es")
-        self.add_pos_tags()
+        self.save_tokenized_file(tokenized_file_es, taglang)
+        self.add_pos_tags(taglang=taglang)
         self.fast_align_sentences(temp_file_for_fast_align, output_fast_align, path_fast_align, use_pos_tags=True)
 
 
@@ -188,11 +189,10 @@ def preprocess_wiki_corpus(file_in, file_out, trim=1000000):
 
 
 if __name__ == '__main__':
-    preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT", 1000)
+    # preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT", 1000)
     # generate_test_corpus()
-    #pD = PreprocessData()
-    #pD.preprocess_data()
-
+    pD = PreprocessData()
+    pD.preprocess_data()
 
     # with codecs.open("pos_tags_and_tokenized_en.txt", "w", "utf-8") as ten:
     #     for line in pD.pos_tagged_sents_en:
