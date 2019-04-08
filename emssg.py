@@ -705,7 +705,7 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     vector_count = {}  # for counting vectors in iteration
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
-    my_wk = np.full((len(vocab), num_of_senses, dim), 0.1)
+    my_wk = np.zeros(shape=(len(vocab), num_of_senses, dim))
     np.random.seed(3)
     v_s_wk = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), num_of_senses, dim))
     np.random.seed(7)
