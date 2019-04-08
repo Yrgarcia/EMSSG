@@ -538,34 +538,12 @@ def save(vocab, nn0, filename, token2word):
     file_pointer.close()
 
 
-def get_prepositions(filename):
-    prepositions = []
-    with open(filename, "r") as prepos:
-        lines = prepos.readlines()
-        for p in lines:
-            p = p.lower().strip()
-            prepositions.append(p)
-    return prepositions
-
-
 def create_token2word(vocab, use_prepositions=False):
     token2word = {}
     if use_prepositions:
         stop = vocab.stopwords + list(set(vocab.notalnums))
     else:
         stop = vocab.stopwords + list(set(vocab.notalnums)) + vocab.prepositions
-    for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
-        if val not in stop:
-            token2word[key] = val
-        else:
-            # add False value to filter out stop words while training
-            token2word[key] = False
-    return token2word
-
-
-def check_for_sw(vocab):
-    token2word = {}
-    stop = vocab.stopwords + list(set(vocab.notalnums)) + vocab.prepositions
     for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
         if val not in stop:
             token2word[key] = val
@@ -597,7 +575,7 @@ def backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t
         z = np.dot(v_c[context_word], v_s_wk[target][s_t])
         p = sigmoid(z)
         g = alpha * (label - p)  # g positive for token, negative for targets
-        neu1e += g * v_s_wk[target][s_t]  # Error to backpropagate to v_s_wk
+        neu1e += g * v_s_wk[target][s_t]  # Error to backpropagate to v_c
         v_s_wk[target][s_t] += g * v_c[context_word]  # Update v_s_wk(w,s_t) with v_c(c)
     # ##############  Update v_c(c) with v_s_wk: ##########################
     v_c[context_word] += neu1e
@@ -644,18 +622,77 @@ def get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, 
     return enriched_context
 
 
+def save_eval_log_senses(words_for_sense_training, vocab, num_of_senses, embedding_file, token2word, v_s_wk, enr):
+    # Save sense embeddings to files:
+    all_senses = [0] * num_of_senses
+    for k in range(num_of_senses):
+        all_senses[k] = {}
+
+    for i in range(len(vocab.words)):
+        if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
+            for k in range(num_of_senses):
+                all_senses[k][vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][k]
+            # senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
+    sense_files = []
+    for k in range(num_of_senses):
+        sense_files.append("%sSENSES_%d" % (enr, k))
+        save(all_senses[k].keys(), all_senses[k].values(), "%sSENSES_%d" % (enr, k), token2word)
+    # save(senses1.keys(), senses1.values(), "%sSENSES_1" % enr, token2word)
+    # Evaluate sense embeddings:
+    spearman = evaluate(embedding_file, "localSim", sense_files=sense_files)
+    log_spearman(spearman, "LOG_%ssenses" % enr)
+    # save best senses to BEST_enr_SENSES_* or BEST_not_enr_SENSES_*
+    # if spearman > old_spearman:
+    #    old_spearman = spearman
+    #    for k in range(num_of_senses):
+    #        save(senses[k].keys(), senses[k].values(), "BEST_" + enr + "SENSES_" + str(k))
+    print("\n===========================================================")
+
+
+def save_eval_log_mys(words_for_sense_training, vocab, num_of_senses, embedding_file, token2word, v_s_wk, enr):
+    # Save cluster centres to files
+    # mys0 = {}
+    # mys1 = {}
+    # for i in range(len(vocab.words)):
+    #     if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
+    #         mys0[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][0]
+    #         mys1[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][1]
+    # save(mys0.keys(), mys0.values(), "%sMYS_0" % enr, token2word)
+    # save(mys1.keys(), mys1.values(), "%sMYS_1" % enr, token2word)
+
+    # Evaluate my cluster:
+    # sp_my = evaluate("BEST_" + embedding_file, "localSim", sense_files=["not_enr_MYS_0", "not_enr_MYS_1"])
+    # log_spearman(sp_my, "LOG_" + enr + "MYS")
+    # # save best senses to BEST_MYS_*
+    # if sp_my > old_sp_my:
+    #     old_sp_my = sp_my
+    #     for k in range(num_of_senses):
+    #         save(vocab, mys[k], "BEST_" + enr + "MYS_" + str(k))
+    return 0
+
+
+def save_eval_log_global(vocab, v_c, embedding_file, token2word, enr):
+    # Save context embeddings to file:
+    save(vocab, v_c, embedding_file, token2word)
+    # Evaluate context embeddings:
+    sp = evaluate(embedding_file, "globalSim")
+    log_spearman(sp, "LOG_%scontext_embs" % enr)
+
+    # save best embeddings to BEST_MSSG_embs
+    # if sp > old_sp_ctxt:
+    #   old_sp_ctxt = sp
+    #   save(vocab, v_c, "BEST_" + embedding_file)
+
+
 def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000, use_prepositions=False):
     num_of_senses = 2  # 2; number of senses
     window = 5  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
     alpha_0 = 0.1  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
-    old_spearman = 0  # for best sense spearman
-    old_sp_ctxt = 0  # for best global embedding spearman
-    old_sp_my = 0  # for testing cluster centre
     word_phrase_passes = 3  # 3; Number of word phrase passes
     word_phrase_delta = 3   # 5; min count for word phrase formula
     word_phrase_threshold = 1e-4  # Threshold for word phrase creation
@@ -664,18 +701,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
     token2word = create_token2word(vocab, use_prepositions)
-    most_common_words = vocab.get_most_common(2000, corpus)
+    most_common_words = vocab.get_most_common(1000, corpus)
     vector_count = {}  # for counting vectors in iteration
-
-    if use_prepositions:
-        words_for_sense_training = vocab.prepositions
-        is_not_stopword = check_for_sw(vocab)
-    else:
-        words_for_sense_training = most_common_words
-        is_not_stopword = token2word
-
-    for word in words_for_sense_training:  # PREPOSITION CHANGE
-            vector_count[word] = {0: 0, 1: 0}  # change for more than 2 SENSES
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
     my_wk = np.full((len(vocab), num_of_senses, dim), 0.1)
@@ -684,6 +711,18 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
     np.random.seed(7)
     v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), dim))
     enr = "not_enr_"
+    if use_prepositions:
+        words_for_sense_training = vocab.prepositions
+        is_not_stopword = create_token2word(vocab, use_prepositions=False)
+    else:
+        words_for_sense_training = most_common_words
+        is_not_stopword = token2word
+    for word in words_for_sense_training:       # prepare vector count for training my
+        temp_dict = {}
+        for k in range(num_of_senses):
+            temp_dict[k] = 0
+        vector_count[word] = temp_dict  # change for more than 2 SENSES
+
     if enriched:
         embedding_file = 'EMSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
         converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
@@ -698,11 +737,9 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
         np.random.seed(7)
         v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab)+len(vocab_), dim))
         enr = "enr_"
-    temp_fill_dict_vc = {}  # temp dict for filling vector_count
     mys = []  # for saving mys to file
     # Fill mys and a temporary dict for later use (vector_count)
     for k in range(num_of_senses):
-        temp_fill_dict_vc[k] = 0
         mys.append(np.zeros(shape=(len(vocab), dim)))
     # Start training:
     for epoch in range(epochs):
@@ -715,12 +752,12 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 context = [tok for tok in context_ if is_not_stopword[tok]]
                 window_ = int(len(context_)/2)
                 while not context and window_ < 10:
+                    # if context only contains stop words, expand context
                     window_ += 1
                     context_, context_start, context_end = get_context(window_, token_idx, tokens, rand=False)
                     context = [tok for tok in context_ if token2word[tok]]
-                # ENR: get enriched context and unify
                 if enriched:
-                    # enriched_context = [x[1]+len_vocab for x in converted_als if x[0] == token_idx]
+                    # retrieve aligned words from enriched corpus and unify with skip-gram context
                     enriched_context = enriched_contexts[token_idx]
                     context += enriched_context
 # ###################################### SENSE TRAINING #################################################
@@ -753,61 +790,13 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                     vector_count[token2word[token]][s_t] += 1
 # ###################################### GRADIENT UPDATE #################################################
                 v_c, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha)
-
         # update learning rate
         alpha = 0.95**epoch * alpha_0
 
         print(vector_count)
-        #plot("ask", count_ctxt_words_for_principle_0, count_ctxt_words_for_principle_1, embedding_file)
-        # Save context embeddings to file:
-        save(vocab, v_c, embedding_file, token2word)
-        # Evaluate context embeddings:
-        sp = evaluate(embedding_file, "globalSim")
-        log_spearman(sp, "LOG_%scontext_embs" % enr)
-
-        # save best embeddings to BEST_MSSG_embs
-        # if sp > old_sp_ctxt:
-        #   old_sp_ctxt = sp
-        #   save(vocab, v_c, "BEST_" + embedding_file)
-
-        # Save cluster centres to files
-        # mys0 = {}
-        # mys1 = {}
-        # for i in range(len(vocab.words)):
-        #     if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
-        #         mys0[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][0]
-        #         mys1[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][1]
-        # save(mys0.keys(), mys0.values(), "%sMYS_0" % enr, token2word)
-        # save(mys1.keys(), mys1.values(), "%sMYS_1" % enr, token2word)
-
-        # Evaluate my cluster:
-        #sp_my = evaluate("BEST_" + embedding_file, "localSim", sense_files=["not_enr_MYS_0", "not_enr_MYS_1"])
-        #log_spearman(sp_my, "LOG_" + enr + "MYS")
-        # # save best senses to BEST_MYS_*
-        # if sp_my > old_sp_my:
-        #     old_sp_my = sp_my
-        #     for k in range(num_of_senses):
-        #         save(vocab, mys[k], "BEST_" + enr + "MYS_" + str(k))
-
-        # Save sense embeddings to files:
-        senses0 = {}
-        senses1 = {}
-        for i in range(len(vocab.words)):
-            if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
-                senses0[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][0]
-                senses1[vocab.words[i].word] = v_s_wk[vocab.word_map[vocab.words[i].word]][1]
-
-        save(senses0.keys(), senses0.values(), "%sSENSES_0" % enr, token2word)
-        save(senses1.keys(), senses1.values(), "%sSENSES_1" % enr, token2word)
-        # Evaluate sense embeddings:
-        spearman = evaluate(embedding_file, "localSim", sense_files=["%sSENSES_0" % enr, "%sSENSES_1" % enr])
-        log_spearman(spearman, "LOG_%ssenses" % enr)
-        # save best senses to BEST_enr_SENSES_* or BEST_not_enr_SENSES_*
-        # if spearman > old_spearman:
-        #    old_spearman = spearman
-        #    for k in range(num_of_senses):
-        #        save(senses[k].keys(), senses[k].values(), "BEST_" + enr + "SENSES_" + str(k))
-        print("\n===========================================================")
+        # plot("ask", count_ctxt_words_for_principle_0, count_ctxt_words_for_principle_1, embedding_file)
+        save_eval_log_global(vocab, v_c, embedding_file, token2word, enr)
+        save_eval_log_senses(words_for_sense_training, vocab, num_of_senses, embedding_file, token2word, v_s_wk, enr)
     # return v_s_wk, v_c, my_wk  # ENR: return v_c_
     return embedding_file
 
@@ -853,11 +842,11 @@ def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
 def execute_emssg():
     start = time.time()
     al_file = "aligned_file"
-    dimension = 100
+    dimension = 300
     english_corpus = "tokenized_en"
     spanish_corpus = "tokenized_es"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=15, dim=dimension, enriched=True, trim=20000)  # max 1965734
+    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=1965734, use_prepositions=False)  # max 1965734
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
@@ -867,7 +856,7 @@ def execute_mssg():
     dimension = 50
     english_corpus = "tokenized_en"
     # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=15, dim=dimension, enriched=False, trim=10000, use_prepositions=True)  # max 1965734
+    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=1965734, use_prepositions=False)  # max 1965734
     # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
     # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
     end = time.time()
@@ -889,12 +878,12 @@ def execute_sg():
 if __name__ == '__main__':
     """
     Before running: 
-    > check PREPOSITION CHANGE s that need to be done (3 changes)
     > check trim value
-    > check number of epochs(5), dimension(100)
-    > check number of senses(2) in emssg()
-    > check number of sense filenames in emssg()
-    > check alpha(0.01), window(5), min_count(3), decay(0.8)
+    > check number of epochs(10), dimension(300)
+    > check number of senses(2), alpha(0.01), window(5), min_count(3), decay(0.8)  in emssg()
+    > check use_prepositions=True/False
+    > check if only eval_words should be included for training senses
+    > check topnum for words_for_sense_training
     > if enriched: check file parameters for corpus_es, aligned_file, enriched=True
     """
     # pD = PreprocessData()

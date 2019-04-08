@@ -35,6 +35,22 @@ class PreprocessData:
         for sent in self.lines_es:
             self.tokenizedLines_es.append(word_tokenize(sent))
 
+    def read_tokenized(self, en_file, es_file):
+        sentsen = []
+        sentses = []
+        with open(en_file, "r") as enf:
+            enlines = enf.readlines()
+        for enl in enlines:
+            splt = enl.split()
+            sentsen.append(splt)
+        with open(es_file, "r") as esf:
+            eslines = esf.readlines()
+        for esl in eslines:
+            splt = esl.split()
+            sentses.append(splt)
+        self.tokenizedLines_en = sentsen
+        self.tokenizedLines_es = sentses
+
     def add_pos_tags(self, taglang="es"):
         print("Adding POS-Tags...")
         pos_tagged_sents = pos_tag_sents(self.tokenizedLines_en)
@@ -46,6 +62,8 @@ class PreprocessData:
                 fo.append(temp)
             self.pos_tagged_sents_en.append(fo)  # -> [["w1t1","w2t2",...],["w1t1",...],...]
         tagger = TreeTagger(TAGLANG=taglang)
+        if taglang == "fi":
+            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="FI_EN/finnish.par")
         pos_tagged_sents = []
         for line in self.tokenizedLines_es:
             if "EE.UU" in line:
@@ -128,7 +146,7 @@ class PreprocessData:
                     te.write(" ".join(line))
                     te.write("\n")
                 te.close()
-            elif lang == "es" or lang == "sv":
+            elif lang == "es" or lang == "sv" or lang == "fi":
                 for line in self.tokenizedLines_es:
                     te.write(" ".join(line))
                     te.write("\n")
@@ -188,11 +206,22 @@ def preprocess_wiki_corpus(file_in, file_out, trim=1000000):
         f_out.close()
 
 
+def get_prepositions(filename):
+    # extract prepositions from file containing one preposition per line
+    prepositions = []
+    with open(filename, "r") as prepos:
+        lines = prepos.readlines()
+        for p in lines:
+            p = p.lower().strip()
+            prepositions.append(p)
+    return prepositions
+
+
 if __name__ == '__main__':
     # preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT", 1000)
     # generate_test_corpus()
-    pD = PreprocessData()
-    pD.preprocess_data()
+    # pD = PreprocessData()
+    # pD.preprocess_data()
 
     # with codecs.open("pos_tags_and_tokenized_en.txt", "w", "utf-8") as ten:
     #     for line in pD.pos_tagged_sents_en:
