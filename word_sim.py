@@ -7,6 +7,7 @@ import codecs
 import numpy as np
 import scipy.spatial.distance
 from scipy.stats import spearmanr
+from plotting_script import plot_embeddings
 
 
 class MSEmbeddings:
@@ -205,47 +206,62 @@ class MSEmbeddings:
         return sim_wc
 
     def avg_sim(self, w, w_):
-        # computes  the  average  similarity  over  all  embeddings  for  each  word,
-        # ignoring  information  from the context
-        similarity = 0.0
-        factor = 1.0 / (self.k_senses ** 2)
-        for i in range(self.k_senses):
-            for j in range(self.k_senses):
-                similarity += np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
-        return factor * similarity
+        try:
+            # computes  the  average  similarity  over  all  embeddings  for  each  word,
+            # ignoring  information  from the context
+            similarity = 0.0
+            factor = 1.0 / (self.k_senses ** 2)
+            for i in range(self.k_senses):
+                for j in range(self.k_senses):
+                    similarity += np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
+            return factor * similarity
+        except KeyError:
+            return ""
 
     def avg_sim_c(self, w, w_, c, c_):
-        # computes  the  average  similarity  over  all  embeddings  for  each  word,
-        # including  information  from the context
-        similarity = 0.0
-        probability_w = self.get_probability_of_sense(w, c)
-        probability_w_ = self.get_probability_of_sense(w_, c_)
-        for i in range(self.k_senses):
-            for j in range(self.k_senses):
-                similarity += probability_w * probability_w_ * np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
-        return similarity
+        try:
+            # computes  the  average  similarity  over  all  embeddings  for  each  word,
+            # including  information  from the context
+            similarity = 0.0
+            probability_w = self.get_probability_of_sense(w, c)
+            probability_w_ = self.get_probability_of_sense(w_, c_)
+            for i in range(self.k_senses):
+                for j in range(self.k_senses):
+                    similarity += probability_w * probability_w_ * np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
+            return similarity
+        except KeyError:
+            return ""
 
     def global_sim(self, w, w_):
         # Global context vector of word, ignoring senses
-        similarity = np.dot(self.w2emb[w], self.w2emb[w_]) / (np.linalg.norm(self.w2emb[w]) * np.linalg.norm(self.w2emb[w_]))
-        return similarity
+        try:
+            similarity = np.dot(self.w2emb[w], self.w2emb[w_]) / (np.linalg.norm(self.w2emb[w]) * np.linalg.norm(self.w2emb[w_]))
+            return similarity
+        except KeyError:
+            return ""
 
     def local_sim(self, w, w_, c, c_):
-        # LocalSim: single sense selection for each word based on the context
-        k = self.get_most_probable_sense(w, c)
-        k_ = self.get_most_probable_sense(w_, c_)
-        similarity = np.dot(self.sense_dict[w][k], self.sense_dict[w_][k_]) / (np.linalg.norm(self.sense_dict[w][k]) * np.linalg.norm(self.sense_dict[w_][k_]))
-        return similarity
+        try:
+            # LocalSim: single sense selection for each word based on the context
+            k = self.get_most_probable_sense(w, c)
+            k_ = self.get_most_probable_sense(w_, c_)
+            similarity = np.dot(self.sense_dict[w][k], self.sense_dict[w_][k_]) / (np.linalg.norm(self.sense_dict[w][k]) * np.linalg.norm(self.sense_dict[w_][k_]))
+            return similarity
+        except KeyError:
+            return ""
 
     def max_sim(self, w, w_):
-        similarity = 0.0
-        for i in range(self.k_senses):
-            for j in range(self.k_senses):
-                new_sim = np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (
-                            np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
-                if new_sim > similarity:
-                    similarity = new_sim
-        return similarity
+        try:
+            similarity = -1.0
+            for i in range(self.k_senses):
+                for j in range(self.k_senses):
+                    new_sim = np.dot(self.sense_dict[w][i], self.sense_dict[w_][j]) / (
+                                np.linalg.norm(self.sense_dict[w][i]) * np.linalg.norm(self.sense_dict[w_][j]))
+                    if new_sim > similarity:
+                        similarity = new_sim
+            return similarity
+        except KeyError:
+            return ""
 
     def eval_on_multiple(self, eval_file, sim_type="globalSim"):
         ws353_pairs = {}
@@ -262,12 +278,28 @@ class MSEmbeddings:
         for pairs, score in zip(ws353_pairs.keys(), ws353_pairs.values()):
             try:
                 if sim_type == "globalSim":
-                    # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1])) * 10))
-                    my_scores.append((self.global_sim(pairs[0], pairs[1])) * 10)
+                    # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1]))*10))
+                    g_score = (self.global_sim(pairs[0], pairs[1]))
+                    if g_score:
+                        my_scores.append(g_score * 10.0)
+                    else:
+                        my_scores.append(g_score)
+                        not_found += 1
                 elif sim_type == "maxSim":
-                    my_scores.append((self.max_sim(pairs[0], pairs[1])) * 10)
+                    max_score = (self.max_sim(pairs[0], pairs[1]))
+                    if max_score:
+                        my_scores.append(max_score * 10.0)
+                    else:
+                        my_scores.append(max_score)
+                        not_found += 1
                 elif sim_type == "avgSim":
-                    my_scores.append((self.avg_sim(pairs[0], pairs[1])) * 10)
+                    # print("\nMy score " + str((self.avg_sim(pairs[0], pairs[1])) * 10))
+                    avg_score = (self.avg_sim(pairs[0], pairs[1]))
+                    if avg_score:
+                        my_scores.append(avg_score * 10.0)
+                    else:
+                        my_scores.append(avg_score)
+                        not_found += 1
                 # print("\nScore for " + str(pairs) + ": " + str(score))
                 # print("\n=================================================")
                 gold_scores.append(score)
@@ -276,8 +308,9 @@ class MSEmbeddings:
                 not_found += 1
         # print len(gold_scores)
         # print len(my_scores)
+        gold_scores = list(map(float, gold_scores))
         print("Found pairs in WS-353: " + str(353 - not_found) + " of " + str(353))
-        print("Spearman Correlation for " + sim_type + " on WS-353: " + str(spearmanr(my_scores, gold_scores)))
+        print("Spearman Correlation for " + sim_type + " on WS-353: " + str(spearmanr(my_scores, gold_scores, nan_policy="omit")))
         print("________________________________________________________")
 
     def calculate_ctxt_vecs_for_scws(self, contexts):
@@ -327,33 +360,52 @@ class MSEmbeddings:
         not_found = 0
 
         for pairs, score, context_vec1, context_vec2 in zip(pairs, avg_rating, context_vecs1, context_vecs2):
-            try:
-                if sim_type == "globalSim":
-                    # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1]))*10))
-                    my_scores.append((self.global_sim(pairs[0], pairs[1])) * 10)
-                elif sim_type == "maxSim":
-                    my_scores.append((self.max_sim(pairs[0], pairs[1])) * 10)
-                elif sim_type == "avgSim":
-                    # print("\nMy score " + str((self.avg_sim(pairs[0], pairs[1])) * 10))
-                    my_scores.append((self.avg_sim(pairs[0], pairs[1])) * 10)
-                elif sim_type == "avgSimC":
-                    # print("\nMy score " + str((self.avg_sim_c(pairs[0], pairs[1], context_vec1, context_vec2)) * 10))
-                    my_scores.append((self.avg_sim_c(pairs[0], pairs[1], context_vec1, context_vec2)) * 10)
-                elif sim_type == "localSim":
-                    # print("\nMy score " + str((self.local_sim(pairs[0], pairs[1], context_vec1, context_vec2)) * 10))
-                    my_scores.append((self.local_sim(pairs[0], pairs[1], context_vec1, context_vec2)) * 10)
+            if sim_type == "globalSim":
+                # print("\nMy score " + str((self.global_sim(pairs[0], pairs[1]))*10))
+                g_score = (self.global_sim(pairs[0], pairs[1]))
+                if g_score:
+                    my_scores.append(g_score * 10.0)
+                else:
+                    my_scores.append(g_score)
+                    not_found += 1
+            elif sim_type == "maxSim":
+                max_score = (self.max_sim(pairs[0], pairs[1]))
+                if max_score:
+                    my_scores.append(max_score * 10.0)
+                else:
+                    my_scores.append(max_score)
+                    not_found += 1
+            elif sim_type == "avgSim":
+                # print("\nMy score " + str((self.avg_sim(pairs[0], pairs[1])) * 10))
+                avg_score = (self.avg_sim(pairs[0], pairs[1]))
+                if avg_score:
+                    my_scores.append(avg_score * 10.0)
+                else:
+                    my_scores.append(avg_score)
+                    not_found += 1
+            elif sim_type == "avgSimC":
+                # print("\nMy score " + str((self.avg_sim_c(pairs[0], pairs[1], context_vec1, context_vec2)) * 10))
+                avgc_score = (self.avg_sim_c(pairs[0], pairs[1], context_vec1, context_vec2))
+                if avgc_score:
+                    my_scores.append(avgc_score * 10.0)
+                else:
+                    my_scores.append(avgc_score)
+                    not_found += 1
+            elif sim_type == "localSim":
+                # print("\nMy score " + str((self.local_sim(pairs[0], pairs[1], context_vec1, context_vec2)) * 10))
+                local_score = (self.local_sim(pairs[0], pairs[1], context_vec1, context_vec2))
+                if local_score:
+                    my_scores.append(local_score * 10.0)
+                else:
+                    my_scores.append(local_score)
+                    not_found += 1
+            # print("\nScore for " + str(pairs) + ": " + str(score) + "\nMy score: " + str(my_scores[-1]))
+            # print("\n=================================================")
+            gold_scores.append(float(score))
 
-                # print("\nScore for " + str(pairs) + ": " + str(score) + "\nMy score: " + str(my_scores[-1]))
-                # print("\n=================================================")
-                gold_scores.append(score)
-
-            except KeyError:
-                not_found += 1
         print("\nFound: " + str(len(lines) - not_found) + " of " + str(len(lines)))
-        my_scores = list(map(float, my_scores))
         # print(my_scores)
-        gold_scores = list(map(float, gold_scores))
-        spear = spearmanr(my_scores, gold_scores)
+        spear = spearmanr(my_scores, gold_scores, nan_policy="omit")
         print("Spearman Correlation for " + sim_type + " on SCWS: "  + str(spear))
         print("________________________________________________________")
         spearman_corr = spear[0]
@@ -423,13 +475,22 @@ class MSEmbeddings:
         return top_word
 
     def get_all_nearest(self, w):
-        self.get_nearest_word(w)
-        self.get_n_nearest_words(w, 20)
-        self.get_nearest_word_for_sense(w, 0)
-        self.get_nearest_word_for_sense(w, 1)
-        self.get_n_nearest_words_for_sense(w, 0, 10)
-        self.get_n_nearest_words_for_sense(w, 1, 10)
-
+        #self.get_nearest_word(w)
+        #self.get_n_nearest_words(w, 20)
+        #self.get_nearest_word_for_sense(w, 0)
+        #self.get_nearest_word_for_sense(w, 1)
+        topwords_sense0 = self.get_n_nearest_words_for_sense(w, 0, 10)
+        topwords_sense1 = self.get_n_nearest_words_for_sense(w, 1, 10)
+        emb_matrix = [self.sense_dict[w][0], self.sense_dict[w][1]]
+        words = [w+"0", w+"1"]
+        for word0, word1 in zip(topwords_sense0, topwords_sense1):
+            words.append(word0)
+            words.append(word1)
+            emb_matrix.append(self.w2emb[word0])
+            emb_matrix.append(self.w2emb[word1])
+        print(words)
+        print(len(emb_matrix))
+        return words, emb_matrix
 
 def extract_embs_from_file(filename):
     # get embeddings from a file
@@ -454,9 +515,13 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 if __name__ == '__main__':
     # evaluate("EMSSG-tokenized_en-7-50-2", sim_type="globalSim", sense_files=["enr_SENSES_0", "enr_SENSES_1"])
     # evaluate("GENSIM_embs", sim_type="globalSim")
-    # emb = MSEmbeddings("MSSG-TEST_en-5-100-2", ["not_enr_SENSES_0", "not_enr_SENSES_1"])
-    # emb.get_all_nearest("european")
+    emb = MSEmbeddings("/home/yoalli/Desktop/VISUALIZATION_EMBS/WIKI2SENSE/MSSG-wiki_tokenized-5-50-2",
+                       ["/home/yoalli/Desktop/VISUALIZATION_EMBS/WIKI2SENSE/not_enr_SENSES_0",
+                        "/home/yoalli/Desktop/VISUALIZATION_EMBS/WIKI2SENSE/not_enr_SENSES_1"])
+    # emb.get_all_nearest("in")
     # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
     # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
-    # emb.eval_on_scws("SCWS/ratings.txt", "avgSim")
+    #emb.eval_on_scws("SCWS/ratings.txt", "globalSim")
+    words, emb_matrix = emb.get_all_nearest("apple")
+    plot_embeddings(emb_matrix, words)
     pass

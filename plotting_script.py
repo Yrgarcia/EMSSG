@@ -154,6 +154,17 @@ def plot_contexts(target, ctxt_words_count0, ctxt_words_count1, ctxt_embs):
     plot_contexts_for_word(sense_dict, ctxt_dict, "ASK with contexts", m_common_0, m_common_1, target)
 
 
+def plot_embeddings(emb_matrix, words):
+    U, s, Vh = np.linalg.svd(emb_matrix, full_matrices=False)
+    for i in range(len(words)):
+        fig = plt.gcf()
+        fig.set_size_inches(18.5, 10.5)
+        plt.text(U[i, 0], U[i, 1], words[i])
+        plt.xlim((-0.5, 0.5))
+        plt.ylim((-0.5, 0.5))
+    plt.show()
+    #plt.savefig('viz.jpg')
+
 if __name__ == '__main__':
     # plot_spearmans(sys.argv[1])
     # plot_spearmans("LOG_not_enr_senses")
@@ -172,4 +183,6 @@ if __name__ == '__main__':
 
     # plot_spearmans("LOG_ENR")
     # plot_spearmans("LOG_SG")
+
+
     pass
