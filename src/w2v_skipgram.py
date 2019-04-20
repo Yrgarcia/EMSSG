@@ -2,7 +2,7 @@ import time
 import math
 import os
 import numpy as np
-from word_sim import evaluate
+from src.word_sim import evaluate
 
 
 class Corpus:
