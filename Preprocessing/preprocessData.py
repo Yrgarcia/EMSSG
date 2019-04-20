@@ -61,9 +61,15 @@ class PreprocessData:
                 temp = word[0] + word[1]
                 fo.append(temp)
             self.pos_tagged_sents_en.append(fo)  # -> [["w1t1","w2t2",...],["w1t1",...],...]
-        tagger = TreeTagger(TAGLANG=taglang)
+        #tagger = TreeTagger(TAGLANG=taglang)
         if taglang == "fi":
-            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="FI_EN/finnish.par")
+            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/fi_en/finnish.par")
+        if taglang == "es":
+            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/es_en/spanish.par")
+        if taglang == "de":
+            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/de_en/german.par")
+        if taglang == "pl":
+            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/pl_en/polish.par")
         pos_tagged_sents = []
         for line in self.tokenizedLines_es:
             if "EE.UU" in line:
@@ -146,26 +152,26 @@ class PreprocessData:
                     te.write(" ".join(line))
                     te.write("\n")
                 te.close()
-            elif lang == "es" or lang == "sv" or lang == "fi":
+            else:
                 for line in self.tokenizedLines_es:
                     te.write(" ".join(line))
                     te.write("\n")
                 te.close()
 
-    def preprocess_data(self):
-        taglang = "sv"
-        en_data = "input_en"
-        es_data = "input_" + taglang
-        tokenized_file_en = "tokenized_en"
-        tokenized_file_es = "tokenized_" + taglang
-        output_fast_align = "aligned_file"
-        path_fast_align = "fast_align/build/fast_align"
-        temp_file_for_fast_align = "file_for_fast_align"
+    def preprocess_data(self, taglang, use_pos_tags):
+        # taglang = "es"
+        en_data = "Preprocessing/%s_en/input_en" % taglang
+        es_data = "Preprocessing/%s_en/input_%s" % (taglang, taglang)
+        tokenized_file_en = "src/tokenized_en"
+        tokenized_file_es = "src/tokenized_" + taglang
+        output_fast_align = "src/aligned_file"
+        path_fast_align = "Preprocessing/fast_align/build/fast_align"
+        temp_file_for_fast_align = "Preprocessing/file_for_fast_align"
         self.read_file_and_tokenize_lines(en_data, es_data)
         self.save_tokenized_file(tokenized_file_en, "en")
         self.save_tokenized_file(tokenized_file_es, taglang)
         self.add_pos_tags(taglang=taglang)
-        self.fast_align_sentences(temp_file_for_fast_align, output_fast_align, path_fast_align, use_pos_tags=True)
+        self.fast_align_sentences(temp_file_for_fast_align, output_fast_align, path_fast_align, use_pos_tags=use_pos_tags)
 
 
 def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", new_file="TEST_corpus_en"):
@@ -190,6 +196,7 @@ def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", 
 
 
 def preprocess_wiki_corpus(file_in, file_out, trim=1000000):
+    # preprocess the wikipedia corpus line by line
     f = codecs.open(file_in, "r", "utf-8")
     lines = [next(f) for x in range(trim)]
     print(lines[-1])
@@ -217,26 +224,14 @@ def get_prepositions(filename):
     return prepositions
 
 
+def preprocess_europarl(config):
+    params = config["Preprocessing"]
+    pD = PreprocessData()
+    pD.preprocess_data(params["language"], params["use pos tags"])
+
+
 if __name__ == '__main__':
-    # preprocess_wiki_corpus("TEST_en", "TEST_TOK_OUT", 1000)
+    # preprocess_wiki_corpus("TEST_en", "TEST_OUT", 1000)
     # generate_test_corpus()
-    # pD = PreprocessData()
-    # pD.preprocess_data()
-
-    # with codecs.open("pos_tags_and_tokenized_en.txt", "w", "utf-8") as ten:
-    #     for line in pD.pos_tagged_sents_en:
-    #         ten.write(" ".join(line))
-    #         ten.write("\n")
-    #     ten.close()
-    #
-    # with codecs.open("pos_tags_and_tokenized_es.txt", "w", "utf-8") as tes:
-    #     for line in pD.pos_tagged_sents_es:
-    #         tes.write(" ".join(line))
-    #         tes.write("\n")
-    #     ten.close()
-
     pass
-
-
-
     

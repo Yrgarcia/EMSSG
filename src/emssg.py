@@ -1,8 +1,8 @@
 import math
-import sys
 import numpy as np
+import os
 import time
-from word_sim import evaluate
+from src.word_sim import evaluate
 from scipy.spatial.distance import cosine
 
 
@@ -20,129 +20,19 @@ class Ngram:
 
 
 class Corpus:
-    def __init__(self, filename_list, word_phrase_passes, word_phrase_delta, word_phrase_threshold, word_phrase_filename, trim=3000):
+    def __init__(self, filename):
+        file_pointer = open(filename, 'r')
         all_tokens = []
         self.notalnums = []
-
-        for filename in filename_list:
-            with open(filename, 'r') as myfile:
-                lines = [next(myfile) for x in range(trim)]
-            for line in lines:
-                line_tokens = line.split()
-                for token in line_tokens:
-                    token = token.lower()
-
-                    if len(token) < 2 and not token.isalnum():
-                        self.notalnums.append(token)
-                    all_tokens.append(token)
-            #print("NOTALNUMS: " + str(set(self.notalnums)))
-
-            #file_pointer.close()
-
-        self.tokens = all_tokens
-
-        #for x in range(1, word_phrase_passes + 1):
-        #   self.build_ngrams(x, word_phrase_delta, word_phrase_threshold, word_phrase_filename)
-
-        self.save_to_file(filename)
-
-    def build_ngrams(self, x, word_phrase_delta, word_phrase_threshold, word_phrase_filename):
-
-        ngrams = []
-        ngram_map = {}
-
-        token_count_map = {}
-        for token in self.tokens:
-            if token not in token_count_map:
-                token_count_map[token] = 1
-            else:
-                token_count_map[token] += 1
-
-        i = 0
-        ngram_l = []
-        for token in self.tokens:
-
-            if len(ngram_l) == 2:
-                ngram_l.pop(0)
-
-            ngram_l.append(token)
-            ngram_t = tuple(ngram_l)
-
-            if ngram_t not in ngram_map:
-                ngram_map[ngram_t] = len(ngrams)
-                ngrams.append(Ngram(ngram_t))
-
-            ngrams[ngram_map[ngram_t]].count += 1
-
-            i += 1
-            if i % 10000 == 0:
-                sys.stdout.flush()
-                sys.stdout.write("\rBuilding n-grams (%d pass): %d" % (x, i))
-        sys.stdout.flush()
-        print( "\rn-grams (%d pass) built: %d" % (x, i))
-        filtered_ngrams_map = {}
-        file_pointer = open(word_phrase_filename + ('-%d' % x), 'w')
-
-        # http://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf
-        i = 0
-        for ngram in ngrams:
-            product = 1
-            for word_string in ngram.tokens:
-                product *= token_count_map[word_string]
-            ngram.set_score((float(ngram.count) - word_phrase_delta) / float(product))
-            if ngram.score > word_phrase_threshold:
-                filtered_ngrams_map[ngram.get_string()] = ngram
-                file_pointer.write('%s %d\n' % (ngram.get_string(), ngram.count))
-            i += 1
-            if i % 10000 == 0:
-                sys.stdout.flush()
-                sys.stdout.write("\rScoring n-grams: %d" % i)
-
-        sys.stdout.flush()
-        print("\rScored n-grams: %d, filtered n-grams: %d" % (i, len(filtered_ngrams_map)))
+        for line in file_pointer:
+            line_tokens = line.split()
+            for token in line_tokens:
+                token = token.lower()
+                if len(token) < 2 and not token.isalnum():
+                    self.notalnums.append(token)
+                all_tokens.append(token)
         file_pointer.close()
-        # Combining the tokens
-        all_tokens = []
-        i = 0
-        while i < len(self.tokens):
-            if i + 1 < len(self.tokens):
-                ngram_l = []
-                ngram_l.append(self.tokens[i])
-                ngram_l.append(self.tokens[i+1])
-                ngram_string = '_'.join(ngram_l)
-
-                if len(ngram_l) == 2 and (ngram_string in filtered_ngrams_map):
-                    ngram = filtered_ngrams_map[ngram_string]
-                    all_tokens.append(ngram.get_string())
-                    i += 2
-                else:
-                    all_tokens.append(self.tokens[i])
-                    i += 1
-            else:
-                all_tokens.append(self.tokens[i])
-                i += 1
-
-        print( "Tokens combined")
-
         self.tokens = all_tokens
-
-    def save_to_file(self, filename):
-
-        i = 1
-
-        filepointer = open('preprocessed-' + filename, 'w')
-        line = ''
-        for token in self.tokens:
-            if i % 20 == 0:
-                line += token
-                filepointer.write('%s\n' % line)
-                line = ''
-            else:
-                line += token + ' '
-
-        #print("\rPreprocessed input file written")
-
-        filepointer.close()
 
     def __getitem__(self, i):
         return self.tokens[i]
@@ -640,7 +530,7 @@ def save_eval_log_senses(words_for_sense_training, vocab, num_of_senses, embeddi
     # save(senses1.keys(), senses1.values(), "%sSENSES_1" % enr, token2word)
     # Evaluate sense embeddings:
     spearman = evaluate(embedding_file, "localSim", sense_files=sense_files)
-    log_spearman(spearman, "LOG_%ssenses" % enr)
+    log_spearman(spearman, "../Spearman_local_%ssenses" % enr)
     # save best senses to BEST_enr_SENSES_* or BEST_not_enr_SENSES_*
     # if spearman > old_spearman:
     #    old_spearman = spearman
@@ -676,27 +566,22 @@ def save_eval_log_global(vocab, v_c, embedding_file, token2word, enr):
     save(vocab, v_c, embedding_file, token2word)
     # Evaluate context embeddings:
     sp = evaluate(embedding_file, "globalSim")
-    log_spearman(sp, "LOG_%scontext_embs" % enr)
-
+    log_spearman(sp, "../Spearman_global_%scontext_embs" % enr)
     # save best embeddings to BEST_MSSG_embs
     # if sp > old_sp_ctxt:
     #   old_sp_ctxt = sp
     #   save(vocab, v_c, "BEST_" + embedding_file)
 
 
-def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, enriched=False, trim=10000, use_prepositions=False):
+def emssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window, verbose):
     num_of_senses = 2  # 2; number of senses
-    window = 5  # Max window length: 5 for large set(excluding stop words)
     k_negative_sampling = 5  # Number of negative examples
     min_count = 0  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
     alpha_0 = 0.1  # 0.01
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
-    word_phrase_passes = 3  # 3; Number of word phrase passes
-    word_phrase_delta = 3   # 5; min count for word phrase formula
-    word_phrase_threshold = 1e-4  # Threshold for word phrase creation
-    corpus = Corpus([corpus_en], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_en, trim=trim)
+    corpus = Corpus(corpus_en)
     vocab = Vocabulary(corpus, min_count)
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
@@ -725,8 +610,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
 
     if enriched:
         embedding_file = 'EMSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
-        converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
-        corpus_ = Corpus([corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_es, trim=trim)
+        converted_als = Alignments("aligned_file", corpus_en, corpus_es).alignments
+        corpus_ = Corpus(corpus_es)
         vocab_ = Vocabulary(corpus_, min_count)
         tokens_ = vocab_.indices(corpus_)
         enriched_contexts = [[] for _ in range(len(tokens))]
@@ -792,8 +677,8 @@ def emssg(corpus_en, corpus_es=None, alignment_file=None, dim=100, epochs=10, en
                 v_c, v_s_wk = gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk, s_t, alpha)
         # update learning rate
         alpha = 0.95**epoch * alpha_0
-
-        print(vector_count)
+        if verbose:
+            print(vector_count)
         # plot("ask", count_ctxt_words_for_principle_0, count_ctxt_words_for_principle_1, embedding_file)
         save_eval_log_global(vocab, v_c, embedding_file, token2word, enr)
         save_eval_log_senses(words_for_sense_training, vocab, num_of_senses, embedding_file, token2word, v_s_wk, enr)
@@ -805,11 +690,8 @@ def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
     # Test whether alignment conversion was successful
     converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
     min_count = 0  # Min count for words to be used in the model, else UNKNOWN
-    word_phrase_passes = 3  # 3; Number of word phrase passes
-    word_phrase_delta = 3  # 5; min count for word phrase formula
-    word_phrase_threshold = 1e-4  # Threshold for word phrase creation
-    corpus = Corpus([corpus_en], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_en)
-    corpus_ = Corpus([corpus_es], word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % corpus_es)
+    corpus = Corpus(corpus_en)
+    corpus_ = Corpus(corpus_es)
     vocab = Vocabulary(corpus, min_count)
     vocab_ = Vocabulary(corpus_, min_count)
     tokens = vocab.indices(corpus)
@@ -822,7 +704,6 @@ def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
         token2word_[key] = val
     new_corpus_ = []
     indexerrors = 0
-    #print(converted_als.__len__())
     for al in converted_als:
         if al != [""]:
             try:
@@ -839,56 +720,22 @@ def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
     print("INDEXERRORS: " +str(indexerrors))
 
 
-def execute_emssg():
+def execute_emssg_or_mssg(config):
+    os.chdir("./src/")
+    params = config["EMSSG"]
     start = time.time()
-    al_file = "aligned_file"
-    dimension = 300
     english_corpus = "tokenized_en"
-    spanish_corpus = "tokenized_es"
-    # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, corpus_es=spanish_corpus, alignment_file=al_file, epochs=10, dim=dimension, enriched=True, trim=1965734, use_prepositions=False)  # max 1965734
+    foreign_corpus = "tokenized_%s" % params["language"]
+    epochs = params["epochs"]
+    dim = params["dimension"]
+    enriched = params["enriched"]
+    window = params["window"]
+    use_prepositions = params["use prepositions"]
+    verbose = params["print cluster counts"]
+    emssg(english_corpus, foreign_corpus, epochs, dim, enriched, use_prepositions, window, verbose)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
-
-
-def execute_mssg():
-    start = time.time()
-    dimension = 50
-    english_corpus = "tokenized_en"
-    # prepositions = get_prepositions("prepositions")  OBSOLETE: prepositions now in vocab.prepositions
-    emssg(english_corpus, epochs=10, dim=dimension, enriched=False, trim=1965734, use_prepositions=False)  # max 1965734
-    # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
-    # evaluate("BEST_" + output_file, "localSim", sense_files=["BEST_" + enr + "SENSES_0", "BEST_" + enr + "SENSES_1"])
-    end = time.time()
-    print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
-
-
-def execute_sg():
-    start = time.time()
-    dimension = 100
-    english_corpus = "tokenized_en"
-    #output_file = (english_corpus, dimension, epochs=40)
-    # output_file = gensim_sg(english_corpus, "gensim_embs")
-    # Evaluate with specific similarity score: "globalSim", "avgSim", "avgSimC" or "localSim"
-    #evaluate(output_file, "globalSim")
-    end = time.time()
-    print("\nSkip-gram took: " + str(round((end-start)/60)) + "min to run.")
 
 
 if __name__ == '__main__':
-    """
-    Before running: 
-    > check trim value
-    > check number of epochs(10), dimension(300)
-    > check number of senses(2), alpha(0.01), window(5), min_count(3), decay(0.8)  in emssg()
-    > check use_prepositions=True/False
-    > check if only eval_words should be included for training senses
-    > check topnum for words_for_sense_training
-    > if enriched: check file parameters for corpus_es, aligned_file, enriched=True
-    """
-    # pD = PreprocessData()
-    # pD.preprocess_data()
-    # execute_sg()
-    # execute_esg()
-    execute_mssg()
-    # execute_emssg()
+    pass

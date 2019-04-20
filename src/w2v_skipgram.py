@@ -1,26 +1,12 @@
 import time
 import math
-import sys
+import os
 import numpy as np
 from word_sim import evaluate
 
-#
-# class Ngram:
-#     def __init__(self, tokens):
-#         self.tokens = tokens
-#         self.count = 0
-#         self.score = 0.0
-#
-#     def set_score(self, score):
-#         self.score = score
-#
-#     def get_string(self):
-#         return '_'.join(self.tokens)
-#
-
 
 class Corpus:
-    def __init__(self, filename, word_phrase_passes, word_phrase_delta, word_phrase_threshold, word_phrase_filename):
+    def __init__(self, filename):
         file_pointer = open(filename, 'r')
 
         all_tokens = []
@@ -39,88 +25,10 @@ class Corpus:
 
         self.tokens = all_tokens
 
-        # for x in range(1, word_phrase_passes + 1):
-        #    self.build_ngrams(x, word_phrase_delta, word_phrase_threshold, word_phrase_filename)
-
         self.save_to_file(filename)
 
-    # def build_ngrams(self, x, word_phrase_delta, word_phrase_threshold, word_phrase_filename):
-    #
-    #     ngrams = []
-    #     ngram_map = {}
-    #
-    #     token_count_map = {}
-    #     for token in self.tokens:
-    #         if token not in token_count_map:
-    #             token_count_map[token] = 1
-    #         else:
-    #             token_count_map[token] += 1
-    #
-    #     ngram_l = []
-    #     for token in self.tokens:
-    #
-    #         if len(ngram_l) == 2:
-    #             ngram_l.pop(0)
-    #
-    #         ngram_l.append(token)
-    #         ngram_t = tuple(ngram_l)
-    #
-    #         if ngram_t not in ngram_map:
-    #             ngram_map[ngram_t] = len(ngrams)
-    #             ngrams.append(Ngram(ngram_t))
-    #
-    #         ngrams[ngram_map[ngram_t]].count += 1
-    #
-    #     print("\rn-grams built.")
-    #
-    #     filtered_ngrams_map = {}
-    #     file_pointer = open(word_phrase_filename + ('-%d' % x), 'w')
-    #
-    #     # http://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf
-    #     for ngram in ngrams:
-    #         product = 1
-    #         for word_string in ngram.tokens:
-    #             product *= token_count_map[word_string]
-    #         ngram.set_score((float(ngram.count) - word_phrase_delta) / float(product))
-    #
-    #         if ngram.score > word_phrase_threshold:
-    #             filtered_ngrams_map[ngram.get_string()] = ngram
-    #             file_pointer.write('%s %d\n' % (ngram.get_string(), ngram.count))
-    #
-    #     print("\rScored n-grams. Filtered n-grams: %d" % (len(filtered_ngrams_map)))
-    #     file_pointer.close()
-    #
-    #     # Combining the tokens
-    #     all_tokens = []
-    #     i = 0
-    #
-    #     while i < len(self.tokens):
-    #
-    #         if i + 1 < len(self.tokens):
-    #             ngram_l = []
-    #             ngram_l.append(self.tokens[i])
-    #             ngram_l.append(self.tokens[i+1])
-    #             ngram_string = '_'.join(ngram_l)
-    #
-    #             if len(ngram_l) == 2 and (ngram_string in filtered_ngrams_map):
-    #                 ngram = filtered_ngrams_map[ngram_string]
-    #                 all_tokens.append(ngram.get_string())
-    #                 i += 2
-    #             else:
-    #                 all_tokens.append(self.tokens[i])
-    #                 i += 1
-    #         else:
-    #             all_tokens.append(self.tokens[i])
-    #             i += 1
-    #
-    #     print("Tokens combined")
-    #
-    #     self.tokens = all_tokens
-
     def save_to_file(self, filename):
-
         i = 1
-
         filepointer = open('preprocessed-' + filename, 'w')
         line = ''
         for token in self.tokens:
@@ -270,30 +178,31 @@ def get_context(tokens, token_idx, window):
     return context
 
 
-def skip_gram(input_filename):
-    # for input_filename in ['news-2012-phrases-10000.txt']:
+def skip_gram(config):
+    start = time.time()
+    os.chdir("./src/")
+    input_filename = "tokenized_en"
+    params = config["skip-gram"]
+    epochs = params["epochs"]
+    dim = params["dimension"]
+    min_count = params["min_count"] # Min count for words to be used in the model, else UNKNOWN
+    learning_rate = params["learning rate"]
     k_negative_sampling = 5  # Number of negative examples
-    min_count = 3  # Min count for words to be used in the model, else UNKNOWN
-    word_phrase_passes = 3  # 3
-    word_phrase_delta = 3  # 5
-    word_phrase_threshold = 1e-4
-    corpus = Corpus(input_filename, word_phrase_passes, word_phrase_delta, word_phrase_threshold, 'phrases-%s' % input_filename)
+    corpus = Corpus(input_filename)
     # Read train file to init vocab
     vocab = Vocabulary(corpus, min_count)
     table = TableForNegativeSamples(vocab)
     # Max window length
-    window = 5  # 5 for large set
-    dim = 100  # 100
-    print("Training: %s-%d-%d-%d" % (input_filename, window, dim, word_phrase_passes))
+    window = params["window"]  # 5 for large set
+    print("Training: %s-%d-%d" % (input_filename, window, dim))
     # Initialize network
     nn0 = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), dim))
     nn1 = np.zeros(shape=(len(vocab), dim))
     # Initial learning rate
-    initial_alpha = 0.02  # 0.01
+    initial_alpha = learning_rate
     # Modified in loop
     alpha = initial_alpha
     tokens = vocab.indices(corpus)
-    epochs = 10
     for epoch in range(epochs):
         print("\rTraining epoch %d..." % epoch)
         for token_idx, token in enumerate(tokens):
@@ -312,16 +221,16 @@ def skip_gram(input_filename):
                 # Update nn0
                 nn0[context_word] += neu1e
         alpha = 0.8 ** epoch * initial_alpha
-        save(vocab, nn0, 'BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes))
-        sp = evaluate('BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes), "globalSim")
-        log_spearman(sp, "LOG_BASIC")
+        save(vocab, nn0, 'SG-Embeddings-%s-%d-%d' % (input_filename, window, dim))
+        sp = evaluate('SG-Embeddings-%s-%d-%d' % (input_filename, window, dim), "globalSim")
+        log_spearman(sp, "../Spearman_global_skip-gram")
     # Save model to file
-    save(vocab, nn0, 'BASICoutput-%s-%d-%d-%d' % (input_filename, window, dim, word_phrase_passes))
+    save(vocab, nn0, 'SG-Embeddings-%s-%d-%d' % (input_filename, window, dim))
 
 
 if __name__ == '__main__':
     start = time.time()
-    skip_gram("TEST")
+    skip_gram("tokenized_en")
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 

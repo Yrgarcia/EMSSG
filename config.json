@@ -1,0 +1,42 @@
+{
+  "Preprocessing": {
+    "language": "es",
+    "use pos tags": true
+  },
+  "EMSSG": {
+    "learning rate": 0.025,
+    "epochs": 10,
+    "most common": 1000,
+    "senses": 2,
+    "min_count": 5,
+    "dimension": 300,
+    "window" : 5,
+    "enriched": false,
+    "language": "es",
+    "use prepositions": false,
+    "print cluster counts":false
+  },
+    "skip-gram": {
+      "learning rate" : 0.025,
+      "epochs" : 10,
+      "min_count" : 5,
+      "dimension" : 300,
+      "window": 5
+  },
+  "MLP": {
+    "apply senses": true,
+    "dimension":300,
+    "global embeddings": "MSSG-tokenized_en-5-10-2",
+    "sense embeddings": [
+      "not_enr_SENSES_0",
+      "not_enr_SENSES_1"
+    ]
+  },
+  "word_sim":{
+    "global embeddings": "MSSG-tokenized_en-5-300-2",
+    "sense embeddings": [
+      "not_enr_SENSES_0",
+      "not_enr_SENSES_1"
+    ]
+  }
+}

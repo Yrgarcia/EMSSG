@@ -4,10 +4,11 @@ Evaluation for trained word embeddings with multiple senses.
 @author: Yoalli García
 """
 import codecs
+import os
 import numpy as np
 import scipy.spatial.distance
 from scipy.stats import spearmanr
-from plotting_script import plot_embeddings
+from src.plot import plot_embeddings
 
 
 class MSEmbeddings:
@@ -411,10 +412,6 @@ class MSEmbeddings:
         spearman_corr = spear[0]
         return spearman_corr
 
-    def euclidean_distance(self, a, b):
-        dist = np.linalg.norm(np.subtract(a, b))
-        return dist
-
     def get_nearest_word(self, w):
         similarity = 2.0
         top_word = ""
@@ -474,11 +471,54 @@ class MSEmbeddings:
         print("Nearest word to " + w + " is " + str(top_word)+ ".")
         return top_word
 
+    def get_n_nearest_senses_for_sense(self, w, sense, topnum):
+        sim_dict = {}
+        top_words = []
+
+        for word in self.sense_dict.keys():
+            if word == w:
+                continue
+            for k in range(self.k_senses):
+                new_sim = scipy.spatial.distance.cosine(self.sense_dict[w][sense], self.sense_dict[word][k])
+                sim_dict[new_sim] = word + str(k)
+        sims = [sim for sim in sim_dict.keys()]
+        sims.sort()
+        #for si in sims[-topnum:]:
+        for si in sims[:topnum]:
+            top_words.append(sim_dict[si])
+        #top_words.reverse()
+        print("Nearest sense words to '" + w + "' are '" + str(top_words) + "'.")
+        return top_words
+
     def get_all_nearest(self, w):
-        #self.get_nearest_word(w)
-        #self.get_n_nearest_words(w, 20)
-        #self.get_nearest_word_for_sense(w, 0)
-        #self.get_nearest_word_for_sense(w, 1)
+        self.get_nearest_word(w)
+        self.get_n_nearest_words(w, 20)
+        self.get_nearest_word_for_sense(w, 0)
+        self.get_nearest_word_for_sense(w, 1)
+        self.get_n_nearest_words_for_sense(w, 0, 10)
+        self.get_n_nearest_words_for_sense(w, 1, 10)
+        self.get_n_nearest_senses_for_sense(w, 0, 10)
+        self.get_n_nearest_senses_for_sense(w, 1, 10)
+
+    def get_nearest_sensewords_for_plotting_senses(self, w):
+        topsenses_0 = self.get_n_nearest_senses_for_sense(w, 0, 10)
+        topsenses_1 = self.get_n_nearest_senses_for_sense(w, 1, 10)
+        emb_matrix = [self.sense_dict[w][0], self.sense_dict[w][1]]
+        words = [w+"0", w+"1"]
+        for word0, word1 in zip(topsenses_0, topsenses_1):
+            words.append(word0)
+            words.append(word1)
+            for k in range(self.k_senses):
+                if str(k) in word0:
+                    word0 = word0.replace(word0[-1], "")
+                    emb_matrix.append(self.sense_dict[word0][k])
+                if str(k) in word1:
+                    word1 = word1.replace(word1[-1], "")
+                    emb_matrix.append(self.sense_dict[word1][k])
+        print(words)
+        return words, emb_matrix
+
+    def get_nearest_context_words_for_plotting_senses(self, w):
         topwords_sense0 = self.get_n_nearest_words_for_sense(w, 0, 10)
         topwords_sense1 = self.get_n_nearest_words_for_sense(w, 1, 10)
         emb_matrix = [self.sense_dict[w][0], self.sense_dict[w][1]]
@@ -489,8 +529,8 @@ class MSEmbeddings:
             emb_matrix.append(self.w2emb[word0])
             emb_matrix.append(self.w2emb[word1])
         print(words)
-        print(len(emb_matrix))
         return words, emb_matrix
+
 
 def extract_embs_from_file(filename):
     # get embeddings from a file
@@ -505,6 +545,7 @@ def extract_embs_from_file(filename):
 
 
 def evaluate(embedding_file, sim_type, sense_files=[]):
+    # evaluation step after each iteration
     scws_f = "SCWS/ratings.txt"
     print("SENSE_FILES:" + str(sense_files))
     emb = MSEmbeddings(embedding_file, sense_files)
@@ -512,16 +553,39 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
     return spearman_corr
 
 
+def calculate_spearmans_for_all_similartities(config):
+    params = config["word_sim"]
+    global_embs = params["global embeddings"]
+    sense_embs = params["sense embeddings"]
+    emb = MSEmbeddings(global_embs, sense_embs)
+    os.chdir("./src/")
+    emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
+    emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
+    emb.eval_on_multiple("WS-353/combined.tab", "maxSim")
+    emb.eval_on_scws("SCWS/ratings.txt", "globalSim")
+    emb.eval_on_scws("SCWS/ratings.txt", "avgSim")
+    emb.eval_on_scws("SCWS/ratings.txt", "avgSimC")
+    emb.eval_on_scws("SCWS/ratings.txt", "localSim")
+
+
+def plot_nearest_sense_words(config, word):
+    params = config["word_sim"]
+    global_embs = params["global embeddings"]
+    sense_embs = params["sense embeddings"]
+    model = MSEmbeddings(global_embs, sense_embs)
+    words, emb_matrix = model.get_nearest_sensewords_for_plotting_senses(word)
+    plot_embeddings(emb_matrix, words, "Nearest sense words for '%s'" % word)
+
+
+def plot_nearest_context_words(config, word):
+    params = config["word_sim"]
+    global_embs = params["global embeddings"]
+    sense_embs = params["sense embeddings"]
+    model = MSEmbeddings(global_embs, sense_embs)
+
+    words, emb_matrix = model.get_nearest_context_words_for_plotting_senses(word)
+    plot_embeddings(emb_matrix, words, "Nearest sense words for '%s'" % word)
+
+
 if __name__ == '__main__':
-    # evaluate("EMSSG-tokenized_en-7-50-2", sim_type="globalSim", sense_files=["enr_SENSES_0", "enr_SENSES_1"])
-    # evaluate("GENSIM_embs", sim_type="globalSim")
-    emb = MSEmbeddings("/home/yoalli/Desktop/VISUALIZATION_EMBS/WIKI2SENSE/MSSG-wiki_tokenized-5-50-2",
-                       ["/home/yoalli/Desktop/VISUALIZATION_EMBS/WIKI2SENSE/not_enr_SENSES_0",
-                        "/home/yoalli/Desktop/VISUALIZATION_EMBS/WIKI2SENSE/not_enr_SENSES_1"])
-    # emb.get_all_nearest("in")
-    # emb.eval_on_multiple("WS-353/combined.tab", "globalSim")
-    # emb.eval_on_multiple("WS-353/combined.tab", "avgSim")
-    #emb.eval_on_scws("SCWS/ratings.txt", "globalSim")
-    words, emb_matrix = emb.get_all_nearest("apple")
-    plot_embeddings(emb_matrix, words)
     pass

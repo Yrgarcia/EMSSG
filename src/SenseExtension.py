@@ -4,7 +4,6 @@
 Extension to train MLP with additional sense vectors per word.
 @author: Yoalli García
 """
-from PrepDataReader import readFile
 import codecs
 from scipy.spatial.distance import cosine
 import numpy as np
@@ -304,12 +303,4 @@ class SenseExtension:
         print("\n" + str(words_with_sense_but_without_ctxt) + " words' senses couldn't be computed because no context words were found.")
         return new_sentences
 
-
-if __name__ == '__main__':
-    # global_embs = "./emb/MSSG-test"
-    # sense_files = ["./emb/not_enr_SENSES_0", "./emb/not_enr_SENSES_1"]
-    # data = "data/streusle_train.conll"
-    # sentences = readFile(data)
-    # SE = SenseExtension(global_embs, sense_files, sentences)
-    pass
 
