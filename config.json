@@ -25,15 +25,6 @@
       "dimension" : 300,
       "window": 5
   },
-  "MLP": {
-    "apply senses": true,
-    "dimension":300,
-    "global embeddings": "MSSG-tokenized_en-5-10-2",
-    "sense embeddings": [
-      "not_enr_SENSES_0",
-      "not_enr_SENSES_1"
-    ]
-  },
   "word_sim":{
     "global embeddings": "MSSG-tokenized_en-5-300-2",
     "sense embeddings": [

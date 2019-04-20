@@ -17,7 +17,7 @@ Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~sch
 Additionally, you need to clone, install and compile [fast_align](https://github.com/clab/fast_align) and specify its location in `config.json`.
 
 ### Configure Parameters
-Enter parameters in `config.json`:
+#### Enter parameters in `config.json`:
 
 **Preprocessing**
 * `language`: determines the second language from the parallel corpus. Can be "es", "fi", "de" or "pl"
@@ -43,12 +43,14 @@ Enter parameters in `config.json`:
 * `use prepositions`: if `true`, model trains senses for prepositions only; if false, model trains senses for N most * common words
 * `print cluster counts`: if `true`, print out number of context vectors assigned to each cluster for every token after each iteration
 
-**MLP**
-* `apply senses`: if `true`, use multiple embeddings for words in the sense embedding files
+**word_sim**
 * `global embeddings`: file location of global embeddings
 * `sense embeddings`: list of files containing the sense embeddings, "not_enr_SENSES_K" for MSSG and "enr_SENSES_K" for EMSSG, e.g. `["not_enr_SENSES_0","not_enr_SENSES_1"]`
 
-**word_sim**
+#### Parameters for MLP in MLP/MLP_config.json
+**MLP**
+* `apply senses`: if `true`, use multiple embeddings for words in the sense embedding files
+* `dimension`: dimensionality of the embeddings
 * `global embeddings`: file location of global embeddings
 * `sense embeddings`: list of files containing the sense embeddings, "not_enr_SENSES_K" for MSSG and "enr_SENSES_K" for EMSSG, e.g. `["not_enr_SENSES_0","not_enr_SENSES_1"]`
 
@@ -63,8 +65,7 @@ You can either use the excerpt of the English-Spanish parallel corpus provided i
 The tokenized input files should be located in the same directory as `emssg.py` and `skip_gram.py` and named for example `tokenized_LT`, with _LT_ being the language tag. Language tags for secong languages are determined in the configuration file. For the monolingual model, the filename is `tokenized_en`.
 
 ### Evaluate embeddings on MLP
-To evaluate the generated embeddings on the preposition classification system, simply specify their file location in `config.json` and run `run_mlp(config)` in `main.py`.If you want to run tests for multi-sense embeddings, you need to set `apply senses` to `true` and specify a list of sense embedding files. 
-
+To evaluate the generated embeddings on the preposition classification system, specify their file location in `MLP/MLP_config.json` and run `MLP/PrepClassifier.py` with **python2**.In order to run tests for multi-sense embeddings, you need to set `apply senses` to `true` and specify a list of sense embedding files. 
 
 ## Built With
 

@@ -1,0 +1,11 @@
+ {
+"MLP": {
+    "apply senses": true,
+    "dimension":300,
+    "global embeddings": "../src/MSSG-tokenized_en-5-10-2",
+    "sense embeddings": [
+      "../src/not_enr_SENSES_0",
+      "../src/not_enr_SENSES_1"
+    ]
+  }
+}
