@@ -3,13 +3,15 @@
 This is an attempted reimplementation of the EMSSG model proposed by [Ghanimifard et al. (2015)](https://aclweb.org/anthology//R15-1029).
 
 ## Getting Started
-After cloning the project, the file structure should not be altered, as some functions depend on it.
+After cloning the project, the file structure should not be altered, as some functions depend on it. 
 
 ### Prerequisites
 
 Install all requirements by pasting the following command into your terminal:
 
   `pip install -r requirements.txt`
+
+Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for Spanish: `/Preprocessing/es_en/`).
 
 ### Configure Parameters
 Enter parameters in `config.json`:
@@ -56,7 +58,7 @@ You can either use the excerpt of the English-Spanish parallel corpus provided i
 The tokenized input files should be located in the same directory as `emssg.py` and `skip_gram.py` and named for example `tokenized_LT`, with _LT_ being the language tag. Language tags for secong languages are determined in the configuration file. For the monolingual model, the filename is `tokenized_en`.
 
 ### Evaluate embeddings on MLP
-To evaluate the generated embeddings on the preposition classification system, simply specify their file location in `config.json` and run TODO in `main.py`.If you want to run tests for multi-sense embeddings, you need to set `apply senses` to `true` and specify a list of sense embedding files. 
+To evaluate the generated embeddings on the preposition classification system, simply specify their file location in `config.json` and run `run_mlp(config)` in `main.py`.If you want to run tests for multi-sense embeddings, you need to set `apply senses` to `true` and specify a list of sense embedding files. 
 
 
 ## Built With
