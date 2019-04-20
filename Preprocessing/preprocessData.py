@@ -51,7 +51,7 @@ class PreprocessData:
         self.tokenizedLines_en = sentsen
         self.tokenizedLines_es = sentses
 
-    def add_pos_tags(self, taglang="es"):
+    def add_pos_tags(self,treetaggerlocation, taglang="es"):
         print("Adding POS-Tags...")
         pos_tagged_sents = pos_tag_sents(self.tokenizedLines_en)
         # pos_tagged_sents = [[(w1,tag1),(w2,tag2)],[(w1,t2),(w2,t2),...]...]
@@ -63,13 +63,13 @@ class PreprocessData:
             self.pos_tagged_sents_en.append(fo)  # -> [["w1t1","w2t2",...],["w1t1",...],...]
         #tagger = TreeTagger(TAGLANG=taglang)
         if taglang == "fi":
-            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/fi_en/finnish.par")
+            tagger = TreeTagger(TAGLANG=taglang, TAGDIR = treetaggerlocation, TAGPARFILE="Preprocessing/fi_en/finnish.par")
         if taglang == "es":
-            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/es_en/spanish.par")
+            tagger = TreeTagger(TAGLANG=taglang, TAGDIR = treetaggerlocation, TAGPARFILE="Preprocessing/es_en/spanish.par")
         if taglang == "de":
-            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/de_en/german.par")
+            tagger = TreeTagger(TAGLANG=taglang, TAGDIR = treetaggerlocation, TAGPARFILE="Preprocessing/de_en/german.par")
         if taglang == "pl":
-            tagger = TreeTagger(TAGLANG=taglang, TAGPARFILE="Preprocessing/pl_en/polish.par")
+            tagger = TreeTagger(TAGLANG=taglang, TAGDIR = treetaggerlocation, TAGPARFILE="Preprocessing/pl_en/polish.par")
         pos_tagged_sents = []
         for line in self.tokenizedLines_es:
             if "EE.UU" in line:
@@ -134,7 +134,7 @@ class PreprocessData:
         with codecs.open(output_fast_align, "r", "utf-8") as af:
             self.aligned_sents = af.readlines()
     
-    def fast_align_sentences(self, input_for_fast_align, output_fast_align, path_fast_align, use_pos_tags):
+    def fast_align_sentences(self, path_fast_align, input_for_fast_align, output_fast_align, use_pos_tags):
         # combine all the actions needed to fast align the sentences
         # input_for_fast_align  == file with input format "<sentence1> ||| <sentence2>"
         # output_fast_align     == aligned positions of the sentences, e.g.: "0-0 1-1 2-1"
@@ -158,20 +158,19 @@ class PreprocessData:
                     te.write("\n")
                 te.close()
 
-    def preprocess_data(self, taglang, use_pos_tags):
+    def preprocess_data(self, taglang, use_pos_tags, treetaggerlocation, path_fast_align):
         # taglang = "es"
         en_data = "Preprocessing/%s_en/input_en" % taglang
         es_data = "Preprocessing/%s_en/input_%s" % (taglang, taglang)
         tokenized_file_en = "src/tokenized_en"
         tokenized_file_es = "src/tokenized_" + taglang
         output_fast_align = "src/aligned_file"
-        path_fast_align = "Preprocessing/fast_align/build/fast_align"
         temp_file_for_fast_align = "Preprocessing/file_for_fast_align"
         self.read_file_and_tokenize_lines(en_data, es_data)
         self.save_tokenized_file(tokenized_file_en, "en")
         self.save_tokenized_file(tokenized_file_es, taglang)
-        self.add_pos_tags(taglang=taglang)
-        self.fast_align_sentences(temp_file_for_fast_align, output_fast_align, path_fast_align, use_pos_tags=use_pos_tags)
+        self.add_pos_tags(treetaggerlocation, taglang=taglang)
+        self.fast_align_sentences(path_fast_align,temp_file_for_fast_align, output_fast_align, use_pos_tags=use_pos_tags)
 
 
 def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", new_file="TEST_corpus_en"):
@@ -226,8 +225,10 @@ def get_prepositions(filename):
 
 def preprocess_europarl(config):
     params = config["Preprocessing"]
+    path_fast_align = params["fast_align location"]
+    treetaggerlocation = params["TreeTagger location"]
     pD = PreprocessData()
-    pD.preprocess_data(params["language"], params["use pos tags"])
+    pD.preprocess_data(params["language"], params["use pos tags"], treetaggerlocation, path_fast_align)
 
 
 if __name__ == '__main__':
