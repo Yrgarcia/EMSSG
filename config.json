@@ -1,7 +1,8 @@
 {
   "Preprocessing": {
     "language": "es",
-    "use pos tags": true
+    "use pos tags": true,
+    "TreeTagger location:" ""
   },
   "EMSSG": {
     "learning rate": 0.025,

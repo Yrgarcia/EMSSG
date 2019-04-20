@@ -11,6 +11,7 @@ Make sure you have Python 3.5 installed. Install all requirements by pasting the
 
   `pip3 install -r requirements.txt`
 
+In order to be able to use the TreeTagger POS-tagger, download the [tagger package](www.cis.uni-muenchen.de/~schmid/tools/TreeTagger) for your system and specify their location in the config.
 Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for Spanish: `/Preprocessing/es_en/`).
 
 ### Configure Parameters
