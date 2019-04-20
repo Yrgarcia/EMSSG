@@ -11,15 +11,19 @@ Make sure you have Python 3.5 installed. Install all requirements by pasting the
 
   `pip3 install -r requirements.txt`
 
-In order to be able to use the TreeTagger POS-tagger, download the [tagger package](www.cis.uni-muenchen.de/~schmid/tools/TreeTagger) for your system and specify their location in the config.
+In order to be able to use the TreeTagger POS-tagger, download the [tagger package](www.cis.uni-muenchen.de/~schmid/tools/TreeTagger) for your system and specify its relative path in the `config.json`.
 Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for Spanish: `/Preprocessing/es_en/`).
+
+Additionally, you need to clone, install and compile [fast_align](https://github.com/clab/fast_align) and specify its location in the `config.json`.
 
 ### Configure Parameters
 Enter parameters in `config.json`:
 
 **Preprocessing**
-* language: determines the second language from the parallel corpus. Can be "es", "fi", "de" or "pl"
-* use pos tags: true if POS-tags should be used for aligning the parallel corpora, otherwise false
+* `language`: determines the second language from the parallel corpus. Can be "es", "fi", "de" or "pl"
+* `use pos tags`: true if POS-tags should be used for aligning the parallel corpora, otherwise false
+* `TreeTagger location`: relative path to the folder containing the tagger package
+* `fast_align location`: relative path to fast_align folder
 
 **Skip-gram**
 * `learning rate`: set the learning rate alpha
