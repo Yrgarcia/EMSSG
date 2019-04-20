@@ -3,13 +3,13 @@
 This is an attempted reimplementation of the EMSSG model proposed by [Ghanimifard et al. (2015)](https://aclweb.org/anthology//R15-1029).
 
 ## Getting Started
-After cloning the project, the file structure should not be altered, as some functions depend on it. 
+After cloning the project, the file structure should not be altered, as some functions depend on it.
 
 ### Prerequisites
 
-Install all requirements by pasting the following command into your terminal:
+Make sure you have Python 3.5 installed. Install all requirements by pasting the following command into your terminal:
 
-  `pip install -r requirements.txt`
+  `pip3 install -r requirements.txt`
 
 Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for Spanish: `/Preprocessing/es_en/`).
 
