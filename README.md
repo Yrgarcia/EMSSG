@@ -9,16 +9,16 @@ After cloning the project, the file structure should not be altered, as some fun
 
 Make sure you have Python 3.5 and Python 2.7 installed. Install all requirements by pasting the following command into your terminal:
 
-  `pip3 install -r requirements.txt`
+  `pip3 install -r requirements_3.5.txt`
   
   As the classification system only runs on Python2, also do
   
-  `pip install -r requirements.txt`
+  `pip install -r requirements_2.7.txt`
 
-In order to be able to use the TreeTagger POS-tagger, download the [tagger package](www.cis.uni-muenchen.de/~schmid/tools/TreeTagger) for your system and specify its relative path in `config.json`.
-Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for Spanish: `/Preprocessing/es_en/`).
+In order to be able to use the TreeTagger POS-tagger, download and unzip the [tagger package](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for your system and specify its relative path in `config.json`.
+Download and unzip the [TreeTagger parameter file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for the included test corpus use the Spanish par file and place it in: `/Preprocessing/es_en/`).
 
-Additionally, you need to clone, install and compile [fast_align](https://github.com/clab/fast_align) and specify its location in `config.json`.
+Additionally, you need to clone, [fast_align](https://github.com/clab/fast_align) and compile it by following the instructions on their GitHub page. Specify its location in `config.json`.
 
 ### Configure Parameters
 #### Enter parameters in `config.json`:
