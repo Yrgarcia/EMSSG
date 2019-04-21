@@ -19,7 +19,7 @@ There is a small excerpt of the English-Spanish Europarl corpus available for te
 
 Download and unzip the [TreeTagger package](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for your system inside the EMSSG folder. If you placed it somewhere else you need to specify its relative path in `config.json`, otherwise you don't need to change the path.
 
-Download and unzip the [TreeTagger parameter file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) and place it in the corresponding folder (for the included test corpus use the Spanish par file and place it in: `/Preprocessing/es_en/`).
+Download and unzip the [TreeTagger parameter file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for the second language (Spanish, Finnish, German or Polish) and place it into the corresponding folder (for the included test corpus use the Spanish par file and place it in: `/Preprocessing/es_en/`).
 
 Clone [fast_align](https://github.com/clab/fast_align) into `EMSSG` and compile it by following the instructions on their GitHub page.
 
