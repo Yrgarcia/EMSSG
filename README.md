@@ -68,7 +68,7 @@ Edit `main.py` and uncomment the corresponding function depending on whether you
 * run the MSSG or EMSSG model, depending on the configuration
 * run the skip-gram model
 * calculate Spearman correlations for all available similarity scores (globalSim, avgSim, avgSimC, localSim, maxSim) for SCWS and WS-353 test data
-* plot the nearest sense and global vectors given a word as input
+* plot the nearest sense or global vectors given a word as input
 
 and run `main.py` with **python3.5**.
 
