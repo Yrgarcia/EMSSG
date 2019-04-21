@@ -70,6 +70,8 @@ Edit `main.py` to determine whether you want to
 * calculate Spearman correlations for all available similarity scores (globalSim, avgSim, avgSimC, localSim, maxSim) for SCWS and WS-353 test data
 * plot the nearest sense and global vectors given a word as input
 
+and run `main.py` with **python3.5**.
+
 For evaluating the embeddings on the MLP classification system see below.
 
 ### Preprocess Parallel Corpus
