@@ -63,7 +63,14 @@ Clone [fast_align](https://github.com/clab/fast_align) into `EMSSG` and compile 
 
 ## Running a test
 
-Edit `main.py` to determine whether you want to preprocess parallel data, run the (E)MSSG or skip-gram model or evaluate embeddings on the preposition classification system (MLP). You can also calculate Spearman correlations for all available similarity scores (globalSim, avgSim, avgSimC, localSim, maxSim) for SCWS and WS-353 test data and plot the nearest sense and global vectors given a word as input.
+Edit `main.py` to determine whether you want to 
+* preprocess the parallel corpus
+* run the MSSG or EMSSG model, depending on the configuration
+* run the skip-gram model
+* calculate Spearman correlations for all available similarity scores (globalSim, avgSim, avgSimC, localSim, maxSim) for SCWS and WS-353 test data
+* plot the nearest sense and global vectors given a word as input
+
+For evaluating the embeddings on the MLP classification system see below.
 
 ### Preprocess Parallel Corpus
 You can either use the excerpt of the English-Spanish parallel corpus provided in `Preprocessing/es_en/` for preprocessing or download a [Europarl Parallel Corpus](http://www.statmt.org/europarl/). Currently, Spanish, Finnish, German and Polish are supported for training the EMSSG. The resulting alignments and tokenized files will be automatically saved in the correct directory for the EMSSG model to use.
