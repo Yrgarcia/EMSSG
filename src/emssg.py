@@ -7,20 +7,8 @@ from src.word_sim import evaluate
 from scipy.spatial.distance import cosine
 
 
-class Ngram:
-    def __init__(self, tokens):
-        self.tokens = tokens
-        self.count = 0
-        self.score = 0.0
-
-    def set_score(self, score):
-        self.score = score
-
-    def get_string(self):
-        return '_'.join(self.tokens)
-
-
 class Corpus:
+    # read in the tokenized corpus and extract all tokens
     def __init__(self, filename):
         file_pointer = open(filename, 'r')
         all_tokens = []
@@ -46,12 +34,14 @@ class Corpus:
 
 
 class Word:
+    # word instance with string and count attribute
     def __init__(self, word):
         self.word = word
         self.count = 0
 
 
 class Vocabulary:
+    # build vocabulary out of the Corpus object, get N most common words, filter for rare and common words
     def __init__(self, corpus, min_count):
         self.words = []
         self.word_map = {}
@@ -273,17 +263,6 @@ class Vocabulary:
         # print("TOP %d words (within eval): %s " % (top_num, str(top_x_words)))
         return top_x_words
 
-    def get_most_common_prepositions(self, top_num):
-        word_count_pairs = []
-        for word in self.words:
-            if word.word in self.prepositions:
-                temp = (word.word, word.count)
-                word_count_pairs.append(temp)
-        top_x = word_count_pairs[:top_num]
-        top_x_words = [x[0] for x in top_x]
-        # print(top_x_words)
-        return top_x_words
-
     def filter_for_rare_and_common(self, min_count):
         # Remove rare words and sort
         tmp = []
@@ -311,6 +290,7 @@ class Vocabulary:
 
 
 class TableForNegativeSamples:
+    # create the table for negative sampling
     def __init__(self, vocab):
         token2word = create_token2word(vocab)
         power = 0.75
@@ -336,6 +316,7 @@ class TableForNegativeSamples:
 
 
 class Alignments:
+    # extract alignments from file and reorganize
     def __init__(self, filename, corpus_en, corpus_es, trim=3000):
         self.alignments = self.convert_alignments(self.get_alignments(filename, trim), corpus_en, corpus_es)
 
@@ -402,7 +383,41 @@ class Alignments:
         return new_als
 
 
+def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
+    # Test whether alignment conversion was successful
+    converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
+    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
+    corpus = Corpus(corpus_en)
+    corpus_ = Corpus(corpus_es)
+    vocab = Vocabulary(corpus, min_count)
+    vocab_ = Vocabulary(corpus_, min_count)
+    tokens_ = vocab_.indices(corpus_)
+    token2word = {}
+    for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
+        token2word[key] = val
+    token2word_ = {}
+    for key, val in zip(vocab_.word_map.values(), vocab_.word_map.keys()):
+        token2word_[key] = val
+    new_corpus_ = []
+    indexerrors = 0
+    for al in converted_als:
+        if al != [""]:
+            try:
+                #if token2word_[tokens_[al[1]]] not in [".", ",", "(", ")", "'"]:
+                new_corpus_.append(token2word_[tokens_[al[1]]])
+            except IndexError:
+                indexerrors += 1
+                new_corpus_.append(str(indexerrors))
+    with open("1reversed_alignments.txt", "w") as ra:
+        for word in new_corpus_:
+            ra.write(word)
+            ra.write(" ")
+    ra.close()
+    print("INDEXERRORS: " +str(indexerrors))
+
+
 def sigmoid(z):
+    # map z to [0:1]
     if z > 6:
         return 1.0
     elif z < -6:
@@ -412,6 +427,7 @@ def sigmoid(z):
 
 
 def save(vocab, nn0, filename, token2word):
+    # save embeddings to file
     # vocab can be either an instance of the vocab class or a dictionary mapping words to their embeddings
     a = {0: 0}
     file_pointer = open(filename, 'w')
@@ -430,6 +446,7 @@ def save(vocab, nn0, filename, token2word):
 
 
 def create_token2word(vocab, use_prepositions=False):
+    # create a dictionary that maps each token to its word string, with stop words mapping to False
     token2word = {}
     if use_prepositions:
         stop = vocab.stopwords + list(set(vocab.notalnums))
@@ -445,6 +462,8 @@ def create_token2word(vocab, use_prepositions=False):
 
 
 def calc_my_update(current_vector_count, curr_my, average):
+    # the update is calculated with the average context vector,
+    # weighed according to the number of vectors already in the cluster
     zaehler = np.add((current_vector_count * curr_my), average)
     nenner = math.pow(current_vector_count + 1, -1)
     product = zaehler * nenner
@@ -452,6 +471,7 @@ def calc_my_update(current_vector_count, curr_my, average):
 
 
 def get_nearest_my(old_my, average, maximum, k):
+    # returns the nearest context cluster sense for the current context
     new_max = cosine(old_my, average)
     max_k = 0
     if new_max <= maximum:
@@ -461,6 +481,7 @@ def get_nearest_my(old_my, average, maximum, k):
 
 
 def backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t, alpha):
+    # backpropagation including negative sampling
     neu1e = np.zeros(dim)
     for target, label in classifiers:  # label: 0 if word is not token, 1 if it is
         z = np.dot(v_c[context_word], v_s_wk[target][s_t])
@@ -468,7 +489,7 @@ def backpropagate_n_negsampling(dim, classifiers, v_c, context_word, v_s_wk, s_t
         g = alpha * (label - p)  # g positive for token, negative for targets
         neu1e += g * v_s_wk[target][s_t]  # Error to backpropagate to v_c
         v_s_wk[target][s_t] += g * v_c[context_word]  # Update v_s_wk(w,s_t) with v_c(c)
-    # ##############  Update v_c(c) with v_s_wk: ##########################
+    # Update v_c(c) with v_s_wk:
     v_c[context_word] += neu1e
     return v_s_wk, v_c
 
@@ -484,12 +505,14 @@ def gradient_update(dim, token, table, k_negative_sampling, v_c, context, v_s_wk
 
 
 def log_spearman(spearman_corr, filename):
+    # write the Spearman correlation from each iteration to a file
     with open(filename, "a") as sl:
         sl.write(str(spearman_corr)+"\n")
         sl.close()
 
 
 def get_context(window, token_idx, tokens, rand=True):
+    # return the context of current token
     if rand:
         current_window = np.random.randint(low=3, high=window + 1)
     else:
@@ -498,19 +521,6 @@ def get_context(window, token_idx, tokens, rand=True):
     context_end = min(token_idx + current_window + 1, len(tokens))
     context = tokens[context_start:token_idx] + tokens[token_idx + 1:context_end]
     return context, context_start, context_end
-
-
-def get_enriched_context(token2word, len_vocab, tokens_, tokens, converted_als, token_idx, context_start, context_end):
-    enriched_context = []
-    enriched_context_als_ = converted_als[context_start:token_idx] + converted_als[token_idx + 1:context_end]
-    # ctxt is already broad enough because ctxt_start and end from en are reused:
-    enriched_context_als_t = [tok for tok in enriched_context_als_ if tok[0] != '']
-    enriched_context_als = [tok for tok in enriched_context_als_t if token2word[tokens[tok[0]]]]
-    for als in enriched_context_als:
-        # go through retrieved alignments and get token IDs from corresponding aligned tokens
-        if als != [""]:
-            enriched_context.append(tokens_[als[1]] + len_vocab)
-    return enriched_context
 
 
 def save_eval_log_senses(words_for_sense_training, vocab, num_of_senses, embedding_file, token2word, v_s_wk, enr):
@@ -540,28 +550,6 @@ def save_eval_log_senses(words_for_sense_training, vocab, num_of_senses, embeddi
     print("\n===========================================================")
 
 
-def save_eval_log_mys(words_for_sense_training, vocab, num_of_senses, embedding_file, token2word, v_s_wk, enr):
-    # Save cluster centres to files
-    # mys0 = {}
-    # mys1 = {}
-    # for i in range(len(vocab.words)):
-    #     if vocab.words[i].word in words_for_sense_training:  # PREPOSITION CHANGE
-    #         mys0[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][0]
-    #         mys1[vocab.words[i].word] = my_wk[vocab.word_map[vocab.words[i].word]][1]
-    # save(mys0.keys(), mys0.values(), "%sMYS_0" % enr, token2word)
-    # save(mys1.keys(), mys1.values(), "%sMYS_1" % enr, token2word)
-
-    # Evaluate my cluster:
-    # sp_my = evaluate("BEST_" + embedding_file, "localSim", sense_files=["not_enr_MYS_0", "not_enr_MYS_1"])
-    # log_spearman(sp_my, "LOG_" + enr + "MYS")
-    # # save best senses to BEST_MYS_*
-    # if sp_my > old_sp_my:
-    #     old_sp_my = sp_my
-    #     for k in range(num_of_senses):
-    #         save(vocab, mys[k], "BEST_" + enr + "MYS_" + str(k))
-    return 0
-
-
 def save_eval_log_global(vocab, v_c, embedding_file, token2word, enr):
     # Save context embeddings to file:
     save(vocab, v_c, embedding_file, token2word)
@@ -574,12 +562,13 @@ def save_eval_log_global(vocab, v_c, embedding_file, token2word, enr):
     #   save(vocab, v_c, "BEST_" + embedding_file)
 
 
-def emssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window, verbose):
+def train_mssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window, verbose):
+    # main function for training the MSSG and EMSSG models
     num_of_senses = 2  # 2; number of senses
-    k_negative_sampling = 5  # Number of negative examples
+    k_negative_sampling = 5  # Number of negative samples
     min_count = 0  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.1  # 0.01
+    alpha_0 = 0.1
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     corpus = Corpus(corpus_en)
@@ -597,6 +586,7 @@ def emssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window,
     np.random.seed(7)
     v_c = np.random.uniform(low=-0.5 / dim, high=0.5 / dim, size=(len(vocab), dim))
     enr = "not_enr_"
+    # if senses are trained for prepositions, prepositions should be excluded from the stop word filter
     if use_prepositions:
         words_for_sense_training = vocab.prepositions
         is_not_stopword = create_token2word(vocab, use_prepositions=False)
@@ -607,15 +597,15 @@ def emssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window,
         temp_dict = {}
         for k in range(num_of_senses):
             temp_dict[k] = 0
-        vector_count[word] = temp_dict  # change for more than 2 SENSES
+        vector_count[word] = temp_dict
 
     if enriched:
-        embedding_file = 'EMSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
-        converted_als = Alignments("aligned_file", corpus_en, corpus_es).alignments
-        corpus_ = Corpus(corpus_es)
-        vocab_ = Vocabulary(corpus_, min_count)
-        tokens_ = vocab_.indices(corpus_)
-        enriched_contexts = [[] for _ in range(len(tokens))]
+        embedding_file = 'EMSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses) # change name of output file
+        converted_als = Alignments("aligned_file", corpus_en, corpus_es).alignments  # load the converted alignments
+        corpus_ = Corpus(corpus_es)  # extract the second language corpus
+        vocab_ = Vocabulary(corpus_, min_count)  # extract vocabulary from corpus
+        tokens_ = vocab_.indices(corpus_)  # get all tokens
+        enriched_contexts = [[] for _ in range(len(tokens))]  # map a list of aligned words to each token
         for al in converted_als:
             if al != [""]:
                 enriched_contexts[al[0]].append(tokens_[al[1]] + len(vocab))
@@ -657,7 +647,7 @@ def emssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window,
                     try:
                         average = sum_of_vc * math.pow(len(context), -1)
                     except ValueError:
-                        print("WINDOW: " + str(window_))
+                        # exception if context is empty/full of stop words
                         print(str(token2word[tokens[token_idx-14]]) + str(token2word[tokens[token_idx-13]]) + str(token2word[tokens[token_idx-12]]) + str(token2word[tokens[token_idx-11]]) + token2word[token])
                     # ########### get nearest sense k (s_t) from sim(my(w_t,k), sum_of_vc) #######
                     maximum = 2.0
@@ -687,44 +677,10 @@ def emssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window,
     return embedding_file
 
 
-def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
-    # Test whether alignment conversion was successful
-    converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
-    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
-    corpus = Corpus(corpus_en)
-    corpus_ = Corpus(corpus_es)
-    vocab = Vocabulary(corpus, min_count)
-    vocab_ = Vocabulary(corpus_, min_count)
-    tokens = vocab.indices(corpus)
-    tokens_ = vocab_.indices(corpus_)
-    token2word = {}
-    for key, val in zip(vocab.word_map.values(), vocab.word_map.keys()):
-        token2word[key] = val
-    token2word_ = {}
-    for key, val in zip(vocab_.word_map.values(), vocab_.word_map.keys()):
-        token2word_[key] = val
-    new_corpus_ = []
-    indexerrors = 0
-    for al in converted_als:
-        if al != [""]:
-            try:
-                #if token2word_[tokens_[al[1]]] not in [".", ",", "(", ")", "'"]:
-                new_corpus_.append(token2word_[tokens_[al[1]]])
-            except IndexError:
-                indexerrors += 1
-                new_corpus_.append(str(indexerrors))
-    with open("1reversed_alignments.txt", "w") as ra:
-        for word in new_corpus_:
-            ra.write(word)
-            ra.write(" ")
-    ra.close()
-    print("INDEXERRORS: " +str(indexerrors))
-
-
 def execute_emssg_or_mssg(config):
+    # extract parameters from config and execute training processes
     os.chdir("./src/")
     params = config["EMSSG"]
-    start = time.time()
     english_corpus = "tokenized_en"
     foreign_corpus = "tokenized_%s" % params["language"]
     epochs = params["epochs"]
@@ -733,7 +689,9 @@ def execute_emssg_or_mssg(config):
     window = params["window"]
     use_prepositions = params["use prepositions"]
     verbose = params["print cluster counts"]
-    emssg(english_corpus, foreign_corpus, epochs, dim, enriched, use_prepositions, window, verbose)
+
+    start = time.time()
+    train_mssg(english_corpus, foreign_corpus, epochs, dim, enriched, use_prepositions, window, verbose)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 

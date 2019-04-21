@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Extension to train MLP with additional sense vectors per word.
+Extension to train MLP with multiple sense vectors per word.
 @author: Yoalli García
 """
 import codecs
@@ -177,7 +177,7 @@ class SenseExtension:
         self.create_sense_dict()
 
     def create_sense_dict(self):
-        # load all embedding files embeddings (sense_files)
+        # load all sense_files and save embs into dictionary with multiple entries per word
         for i in range(len(self.sense_files)):
             with open(self.sense_files[i]) as sf:
                 lines = sf.readlines()
@@ -192,7 +192,7 @@ class SenseExtension:
         self.sense_words = set(self.sense_dict.keys())
 
     def extract_sense_embs(self):
-        # load sense embeddings (from sense_files)
+        # load sense embeddings (from sense_files) into dictionary with one entry per word
         for i in range(len(self.sense_files)):
             with open(self.sense_files[i]) as sf:
                 lines = sf.readlines()
@@ -225,14 +225,15 @@ class SenseExtension:
             idx += 1
 
     def get_most_probable_sense(self, w, c):
-            sim_wc = 2.0
-            sense = "NONE"
-            for k in range(self.k_senses):
-                sim_wc_new = cosine(self.sense_dict[w][k], c)
-                if sim_wc_new < sim_wc:
-                    sim_wc = sim_wc_new
-                    sense = k
-            return sense
+        # return the most probable sense for word w in context c
+        sim_wc = 2.0
+        sense = "NONE"
+        for k in range(self.k_senses):
+            sim_wc_new = cosine(self.sense_dict[w][k], c)
+            if sim_wc_new < sim_wc:
+                sim_wc = sim_wc_new
+                sense = k
+        return sense
 
     def get_context(self, window, position, sentence):
         # get all context words from the word's context in window range

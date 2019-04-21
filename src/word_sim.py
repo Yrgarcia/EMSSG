@@ -189,6 +189,7 @@ class MSEmbeddings:
         return sense_dict
 
     def get_most_probable_sense(self, w, c):
+        # return the most probable sense: maximum cosine similarity of word w to every sense k based on context c
         sim_wc = 2.0
         sense = "NONE"
         for k in range(self.k_senses):
@@ -199,6 +200,7 @@ class MSEmbeddings:
         return sense
 
     def get_probability_of_sense(self, w, c):
+        # return probability of most probable sense k
         sim_wc = 2.0
         for k in range(self.k_senses):
             sim_wc_new = scipy.spatial.distance.cosine(self.sense_dict[w][k], c)
@@ -252,6 +254,7 @@ class MSEmbeddings:
             return ""
 
     def max_sim(self, w, w_):
+        # computes the maximum similarity for each sense k of word w and sense j of word w_
         try:
             similarity = -1.0
             for i in range(self.k_senses):
@@ -265,6 +268,7 @@ class MSEmbeddings:
             return ""
 
     def eval_on_multiple(self, eval_file, sim_type="globalSim"):
+        # evaluate on WS-353 file
         ws353_pairs = {}
         with open(eval_file) as ws353:
             lines = ws353.readlines()
@@ -315,6 +319,7 @@ class MSEmbeddings:
         print("________________________________________________________")
 
     def calculate_ctxt_vecs_for_scws(self, contexts):
+        # calculate the context vectors for each target word based on its context provided by SCWS
         # The target word is surrounded by <b>...</b> in its context.
         context_vectors = []
         not_in_data = 0
@@ -338,6 +343,7 @@ class MSEmbeddings:
         return context_vectors
 
     def eval_on_scws(self, scws_file, sim_type):
+        # compute Spearman correlations for SCWS word pairs
         # format: <id>   <word1>   <POS of word1>   <word2>   <POS of word2>   <word1 in context>   <word2 in context>
         #  <average human rating>   <10 individual human ratings>
         pairs, context_word1, context_word2, avg_rating = [], [], [], []
@@ -413,6 +419,7 @@ class MSEmbeddings:
         return spearman_corr
 
     def get_nearest_word(self, w):
+        # get the nearest global word for global word w
         similarity = 2.0
         top_word = ""
         for word in self.w2emb.keys():
@@ -426,6 +433,7 @@ class MSEmbeddings:
         return top_word
 
     def get_n_nearest_words(self, w, topnum):
+        # get N nearest global words for global word w
         sim_dict = {}
         top_words = []
         for word in self.w2emb.keys():
@@ -443,6 +451,7 @@ class MSEmbeddings:
         return top_words
 
     def get_n_nearest_words_for_sense(self, w, sense, topnum):
+        # get N nearest global words for word w and its sense k
         sim_dict = {}
         top_words = []
 
@@ -461,6 +470,7 @@ class MSEmbeddings:
         return top_words
 
     def get_nearest_word_for_sense(self, w, sense):
+        # get nearest global word for word w and its sense k
         similarity = 2.0
         top_word = ""
         for word, emb in zip(self.w2emb.keys(), self.w2emb.values()):
@@ -472,6 +482,7 @@ class MSEmbeddings:
         return top_word
 
     def get_n_nearest_senses_for_sense(self, w, sense, topnum):
+        # get N nearest sense words for sense word w
         sim_dict = {}
         top_words = []
 
@@ -491,6 +502,7 @@ class MSEmbeddings:
         return top_words
 
     def get_all_nearest(self, w):
+        # get all kinds of nearest words (global and sense) for sense and global embeddings of word w
         self.get_nearest_word(w)
         self.get_n_nearest_words(w, 20)
         self.get_nearest_word_for_sense(w, 0)
@@ -501,6 +513,7 @@ class MSEmbeddings:
         self.get_n_nearest_senses_for_sense(w, 1, 10)
 
     def get_nearest_sensewords_for_plotting_senses(self, w):
+        # prepare matrix and word list for plotting nearest sense words
         topsenses_0 = self.get_n_nearest_senses_for_sense(w, 0, 10)
         topsenses_1 = self.get_n_nearest_senses_for_sense(w, 1, 10)
         emb_matrix = [self.sense_dict[w][0], self.sense_dict[w][1]]
@@ -515,10 +528,10 @@ class MSEmbeddings:
                 if str(k) in word1:
                     word1 = word1.replace(word1[-1], "")
                     emb_matrix.append(self.sense_dict[word1][k])
-        print(words)
         return words, emb_matrix
 
     def get_nearest_context_words_for_plotting_senses(self, w):
+        # prepare matrix and word list for nearest context words
         topwords_sense0 = self.get_n_nearest_words_for_sense(w, 0, 10)
         topwords_sense1 = self.get_n_nearest_words_for_sense(w, 1, 10)
         emb_matrix = [self.sense_dict[w][0], self.sense_dict[w][1]]
@@ -528,7 +541,6 @@ class MSEmbeddings:
             words.append(word1)
             emb_matrix.append(self.w2emb[word0])
             emb_matrix.append(self.w2emb[word1])
-        print(words)
         return words, emb_matrix
 
 
@@ -545,7 +557,7 @@ def extract_embs_from_file(filename):
 
 
 def evaluate(embedding_file, sim_type, sense_files=[]):
-    # evaluation step after each iteration
+    # evaluation step after each iteration of MSSG or EMSSG
     scws_f = "SCWS/ratings.txt"
     print("SENSE_FILES:" + str(sense_files))
     emb = MSEmbeddings(embedding_file, sense_files)
@@ -554,6 +566,7 @@ def evaluate(embedding_file, sim_type, sense_files=[]):
 
 
 def calculate_spearmans_for_all_similartities(config):
+    # calculate Spearman correlations for all possible similarity scores
     params = config["word_sim"]
     global_embs = params["global embeddings"]
     sense_embs = params["sense embeddings"]
@@ -569,6 +582,7 @@ def calculate_spearmans_for_all_similartities(config):
 
 
 def plot_nearest_sense_words(config, word):
+    # plot the nearest sense words for word
     params = config["word_sim"]
     global_embs = params["global embeddings"]
     sense_embs = params["sense embeddings"]
@@ -578,6 +592,7 @@ def plot_nearest_sense_words(config, word):
 
 
 def plot_nearest_context_words(config, word):
+    # plot the nearest context words for word
     params = config["word_sim"]
     global_embs = params["global embeddings"]
     sense_embs = params["sense embeddings"]

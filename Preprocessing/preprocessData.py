@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+Class for preprocessing the Europarl corpus as well as additional functions for preprocessing the Wikipedia corpus,
+generating a test corpus and extracting a list of prepositions from a file.
+@author: Yoalli Garcia
+"""
 import codecs
 import os
 from nltk import word_tokenize
@@ -36,6 +41,7 @@ class PreprocessData:
             self.tokenizedLines_es.append(word_tokenize(sent))
 
     def read_tokenized(self, en_file, es_file):
+        # read and store an already tokenized file
         sentsen = []
         sentses = []
         with open(en_file, "r") as enf:
@@ -52,6 +58,7 @@ class PreprocessData:
         self.tokenizedLines_es = sentses
 
     def add_pos_tags(self,treetaggerlocation, taglang="es"):
+        # POS-tag the tokenized sentences according to language
         print("Adding POS-Tags...")
         pos_tagged_sents = pos_tag_sents(self.tokenizedLines_en)
         # pos_tagged_sents = [[(w1,tag1),(w2,tag2)],[(w1,t2),(w2,t2),...]...]
@@ -61,7 +68,6 @@ class PreprocessData:
                 temp = word[0] + word[1]
                 fo.append(temp)
             self.pos_tagged_sents_en.append(fo)  # -> [["w1t1","w2t2",...],["w1t1",...],...]
-        #tagger = TreeTagger(TAGLANG=taglang)
         if taglang == "fi":
             tagger = TreeTagger(TAGLANG=taglang, TAGDIR = treetaggerlocation, TAGPARFILE="Preprocessing/fi_en/finnish.par")
         if taglang == "es":
@@ -159,7 +165,7 @@ class PreprocessData:
                 te.close()
 
     def preprocess_data(self, taglang, use_pos_tags, treetaggerlocation, path_fast_align):
-        # taglang = "es"
+        # preprocess Europarl corpus: read file, tokenize lines, POS-tag sentences, and fast_align them
         en_data = "Preprocessing/%s_en/input_en" % taglang
         es_data = "Preprocessing/%s_en/input_%s" % (taglang, taglang)
         tokenized_file_en = "src/tokenized_en"
@@ -174,7 +180,7 @@ class PreprocessData:
 
 
 def generate_test_corpus(filename="tokenized_en", eval_data="SCWS/ratings.txt", new_file="TEST_corpus_en"):
-    # generate a corpus that only contains sentences that contain at least one word from the eval file
+    # Experiment: generate a corpus that only contains sentences that contain at least one word from the eval file
     words = []
     with open(eval_data) as scws:
         lines = scws.readlines()
@@ -224,6 +230,7 @@ def get_prepositions(filename):
 
 
 def preprocess_europarl(config):
+    # extract parameters from config and initiate preprocessing
     params = config["Preprocessing"]
     path_fast_align = params["fast_align location"]
     treetaggerlocation = params["TreeTagger location"]

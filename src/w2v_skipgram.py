@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+w2v skip gram code by Thijs Scheepers (with a few modifications)
+"""
+
 import time
 import math
 import os
@@ -180,7 +184,6 @@ def get_context(tokens, token_idx, window):
 
 
 def skip_gram(config):
-    start = time.time()
     os.chdir("./src/")
     input_filename = "tokenized_en"
     params = config["skip-gram"]
@@ -221,7 +224,7 @@ def skip_gram(config):
                     nn1[target] += g * nn0[context_word]  # Update nn1
                 # Update nn0
                 nn0[context_word] += neu1e
-        alpha = 0.8 ** epoch * initial_alpha
+        alpha = 0.95 ** epoch * initial_alpha
         save(vocab, nn0, 'SG-Embeddings-%s-%d-%d' % (input_filename, window, dim))
         sp = evaluate('SG-Embeddings-%s-%d-%d' % (input_filename, window, dim), "globalSim")
         log_spearman(sp, "../Spearman_global_skip-gram")
