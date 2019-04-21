@@ -27,27 +27,27 @@ Clone [fast_align](https://github.com/clab/fast_align) into `EMSSG` and compile 
 #### Enter parameters in `config.json`:
 
 **Preprocessing**
-* `language`: determines the second language from the parallel corpus. Can be "es", "fi", "de" or "pl"
-* `use pos tags`: true if POS-tags should be used for aligning the parallel corpora, otherwise false
+* `language`: language tag of the second language of the parallel corpus. Can be `"es"`, `"fi"`, `"de"` or `"pl"`
+* `use pos tags`: `true` if POS-tags should be used for aligning the parallel corpora, otherwise `false`
 * `TreeTagger location`: relative path to the folder containing the tagger package
 * `fast_align location`: relative path to fast_align folder
 
 **Skip-gram**
-* `learning rate`: set the learning rate alpha
-* `epochs`: set number of iterations
-* `min_count`: words occurring less than _min_count_ times will be excluded from training
+* `learning rate`: learning rate alpha
+* `epochs`: number of iterations through corpus
+* `min_count`: words occurring less than `min_count` times will be excluded from training
 * `dimension`: dimensionality of the embeddings
 
 **EMSSG**
-* `learning rate`: set the learning rate alpha
-* `epochs`: set number of iterations
-* `most common`: number N of most common words for which K senses are trained
-* `senses`: number of senses K per most common word
-* `min_count`: words occurring less than min_count times will be excluded from training
+* `learning rate`: learning rate alpha
+* `epochs`: number of iterations through corpus
+* `most common`: number of words you want to train senses for
+* `senses`: number of senses you want to train 
+* `min_count`: words occurring less than `min_count` times will be excluded from training
 * `dimension`: dimensionality of the embeddings
 * `enriched`: `false` for MSSG, `true` for EMSSG
-* `language`: determines the second language from the parallel corpus. Can be `"es"`, `"fi"`, `"de"` or `"pl"`
-* `use prepositions`: if `true`, model trains senses for prepositions only; if false, model trains senses for N most * common words
+* `language`: language tag of the second language of the parallel corpus. Can be `"es"`, `"fi"`, `"de"` or `"pl"`
+* `use prepositions`: if `true`, model trains senses for prepositions only; if false, model trains senses for N most common words
 * `print cluster counts`: if `true`, print out number of context vectors assigned to each cluster for every token after each iteration
 
 **word_sim**
