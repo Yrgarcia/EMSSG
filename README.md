@@ -7,9 +7,13 @@ After cloning the project, the file structure should not be altered, as some fun
 
 ### Prerequisites
 
-Make sure you have Python 3.5 installed. Install all requirements by pasting the following command into your terminal:
+Make sure you have Python 3.5 and Python 2.7 installed. Install all requirements by pasting the following command into your terminal:
 
   `pip3 install -r requirements.txt`
+  
+  As the classification system only runs on Python2, also do
+  
+  `pip install -r requirements.txt`
 
 In order to be able to use the TreeTagger POS-tagger, download the [tagger package](www.cis.uni-muenchen.de/~schmid/tools/TreeTagger) for your system and specify its relative path in `config.json`.
 Download and unzip the [TreeTagger par file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for Spanish: `/Preprocessing/es_en/`).
