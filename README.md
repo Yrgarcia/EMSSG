@@ -63,7 +63,7 @@ Clone [fast_align](https://github.com/clab/fast_align) into `EMSSG` and compile 
 
 ## Running a test
 
-Edit `main.py` to determine whether you want to 
+Edit `main.py` and uncomment the corresponding function depending on whether you want to 
 * preprocess the parallel corpus
 * run the MSSG or EMSSG model, depending on the configuration
 * run the skip-gram model
