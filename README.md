@@ -15,7 +15,7 @@ Navigate into `EMSSG` and make sure you have Python 3.5 and Python 2.7 installed
   
   `pip2 install -r requirements_2.7.txt`
 
-There is a small excerpt of the English-Spanish Europarl corpus available for testing, but if you want to use the full [Europarl corpus](http://www.statmt.org/europarl/) for either Spanish, Finnish, German or Polish, download and unzip it and place it in the corresponding language pair folder. For English-Spanish that is `/Preprocessing/es_en/`.
+There is a small excerpt of the English-Spanish Europarl corpus available for testing, but if you want to use the full [Europarl corpus](http://www.statmt.org/europarl/) for either Spanish, Finnish, German or Polish, download and unzip it and place it in the corresponding language pair folder located in `Preprocessing`. For English-Spanish that is `/Preprocessing/es_en/`.
 
 Download and unzip the [TreeTagger package](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for your system inside the EMSSG folder. If you placed it somewhere else you need to specify its relative path in `config.json`, otherwise you don't need to change the path.
 
