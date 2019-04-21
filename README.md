@@ -7,7 +7,7 @@ After cloning the project, the file structure should not be altered, as some fun
 
 ### Prerequisites
 
-Make sure you have Python 3.5 and Python 2.7 installed. Install all requirements by pasting the following command into your terminal:
+Navigate into `EMSSG` and make sure you have Python 3.5 and Python 2.7 installed. Install all requirements by pasting the following command into your terminal:
 
   `pip3 install -r requirements_3.5.txt`
   
@@ -15,10 +15,13 @@ Make sure you have Python 3.5 and Python 2.7 installed. Install all requirements
   
   `pip install -r requirements_2.7.txt`
 
-In order to be able to use the TreeTagger POS-tagger, download and unzip the [tagger package](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for your system into a folder named `TreeTagger` and specify its relative path in `config.json`.
-Download and unzip the [TreeTagger parameter file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for either Spanish, Finnish, German or Polish and place it in the corresponding folder (for the included test corpus use the Spanish par file and place it in: `/Preprocessing/es_en/`).
+There is a small excerpt of the English-Spanish Europarl corpus available for testing, but if you want to use the full [Europarl corpus](http://www.statmt.org/europarl/) for either Spanish, Finnish, German or Polish, download and unzip it and place it in the corresponding language pair folder. For English-Spanish that is `/Preprocessing/es_en/`.
 
-Additionally, you need to clone, [fast_align](https://github.com/clab/fast_align) and compile it by following the instructions on their GitHub page. Specify its location in `config.json` including the direct path to the binary `fast_align/build/fast_align`.
+Download and unzip the [TreeTagger package](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for your system inside the EMSSG folder. If you placed it somewhere else you need to specify its relative path in `config.json`, otherwise you don't need to change the path.
+
+Download and unzip the [TreeTagger parameter file](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) and place it in the corresponding folder (for the included test corpus use the Spanish par file and place it in: `/Preprocessing/es_en/`).
+
+Clone [fast_align](https://github.com/clab/fast_align) into `EMSSG` and compile it by following the instructions on their GitHub page.
 
 ### Configure Parameters
 #### Enter parameters in `config.json`:
@@ -60,7 +63,7 @@ Additionally, you need to clone, [fast_align](https://github.com/clab/fast_align
 
 ## Running a test
 
-Edit `main.py` to determine whether you want to preprocess parallel data, run the (E)MSSG or skip-gram model or evaluate embeddings on the preposition classification system (MLP). You can also calculate Spearman correlations for all available similarity scores (globalSim, avgSim, avgSimC, localSim, maxSim) for SCWS and WS-353 test data by executing `src/word_sim.py`. `word_sim.py` also includes functionalities for plotting the nearest sense and global vectors.
+Edit `main.py` to determine whether you want to preprocess parallel data, run the (E)MSSG or skip-gram model or evaluate embeddings on the preposition classification system (MLP). You can also calculate Spearman correlations for all available similarity scores (globalSim, avgSim, avgSimC, localSim, maxSim) for SCWS and WS-353 test data and plot the nearest sense and global vectors given a word as input.
 
 ### Preprocess Parallel Corpus
 You can either use the excerpt of the English-Spanish parallel corpus provided in `Preprocessing/es_en/` for preprocessing or download a [Europarl Parallel Corpus](http://www.statmt.org/europarl/). Currently, Spanish, Finnish, German and Polish are supported for training the EMSSG. The resulting alignments and tokenized files will be automatically saved in the correct directory for the EMSSG model to use.

@@ -2,8 +2,8 @@
   "Preprocessing": {
     "language": "es",
     "use pos tags": true,
-    "TreeTagger location": "../../Downloads/TreeTagger/",
-    "fast_align location": "../../Downloads/fast_align/"
+    "TreeTagger location": "",
+    "fast_align location": "./fast_align/build/fast_align"
   },
   "EMSSG": {
     "learning rate": 0.025,
