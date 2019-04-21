@@ -184,6 +184,7 @@ def get_context(tokens, token_idx, window):
 
 
 def skip_gram(config):
+    start = time.time()
     os.chdir("./src/")
     input_filename = "tokenized_en"
     params = config["skip-gram"]
@@ -231,10 +232,10 @@ def skip_gram(config):
     # Save model to file
     save(vocab, nn0, 'SG-Embeddings-%s-%d-%d' % (input_filename, window, dim))
 
-
-if __name__ == '__main__':
-    start = time.time()
-    skip_gram("tokenized_en")
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
+
+
+if __name__ == '__main__':
+    pass
 
