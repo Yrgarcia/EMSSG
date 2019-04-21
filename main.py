@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # preprocessData.preprocess_europarl(config)
 
     # To run the skip-gram algorithm, execute:
-    w2v_skipgram.skip_gram(config)
+    # w2v_skipgram.skip_gram(config)
 
     # To run the MSSG or EMSSG algorithm, execute:
     # emssg.execute_emssg_or_mssg(config)

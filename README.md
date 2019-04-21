@@ -69,7 +69,7 @@ You can either use the excerpt of the English-Spanish parallel corpus provided i
 The tokenized input files should be located in the same directory as `emssg.py` and `skip_gram.py` and named for example `tokenized_LT`, with _LT_ being the language tag. Language tags for secong languages are determined in the configuration file. For the monolingual model, the filename is `tokenized_en`.
 
 ### Evaluate embeddings on MLP
-To evaluate the generated embeddings on the preposition classification system, specify their file location in `MLP/MLP_config.json` and run `MLP/PrepClassifier.py` with **python2**.In order to run tests for multi-sense embeddings, you need to set `apply senses` to `true` and specify a list of sense embedding files. 
+To evaluate the generated embeddings on the preposition classification system, specify their file location in `MLP/MLP_config.json` and run `MLP/PrepClassifier.py` with **python2.7**.In order to run tests for multi-sense embeddings, you need to set `apply senses` to `true` and specify a list of sense embedding files. 
 
 ## Built With
 

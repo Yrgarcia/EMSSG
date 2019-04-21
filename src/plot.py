@@ -86,8 +86,8 @@ def plot_senses(sense_dict, title, limit=100):
 def plot_embeddings(emb_matrix, words, name):
     # function for visualizing sense vectors and their nearest global or sense vectors
     U, s, Vh = np.linalg.svd(emb_matrix, full_matrices=False)
-    print(U[0, 0], U[0, 1])
-    print(U[1, 0], U[1, 1])
+    # print(U[0, 0], U[0, 1])
+    # print(U[1, 0], U[1, 1])
     for i in range(len(words)):
         fig = plt.gcf()
         fig.set_size_inches(18.5, 10.5)

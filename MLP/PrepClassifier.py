@@ -25,7 +25,6 @@ import json
 with open('MLP_config.json') as json_data_file:
     config = json.load(json_data_file)
 
-os.chdir("./src/")
 params = config["MLP"]
 senses = params["apply senses"]
 global_embs = params["global embeddings"]

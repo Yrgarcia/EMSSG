@@ -26,10 +26,10 @@
       "window": 5
   },
   "word_sim":{
-    "global embeddings": "MSSG-tokenized_en-5-300-2",
+    "global embeddings": "src/MSSG-tokenized_en-5-300-2",
     "sense embeddings": [
-      "not_enr_SENSES_0",
-      "not_enr_SENSES_1"
+      "src/not_enr_SENSES_0",
+      "src/not_enr_SENSES_1"
     ]
   }
 }
