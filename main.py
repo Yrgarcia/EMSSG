@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # w2v_skipgram.skip_gram(config)
 
     # To run the MSSG or EMSSG algorithm, execute:
-    # emssg.execute_emssg_or_mssg(config)
+    emssg.execute_emssg_or_mssg(config)
 
     # To calculate Spearman correlations for all similarity scores, execute:
     # word_sim.calculate_spearmans_for_all_similartities(config)

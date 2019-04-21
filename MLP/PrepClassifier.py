@@ -83,7 +83,6 @@ if not senses:
             idx += 1
     word2Idx["PADDING"] = idx + 1
 print('Found %s word vectors.' % len(word2Idx))
-print(word2Idx["UNKNOWN"])
 # Create a mapping for our labels
 label2Idx = {'_': 0}
 idx = 1

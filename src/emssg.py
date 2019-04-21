@@ -386,7 +386,7 @@ class Alignments:
 def reverse_alignments(alignment_file, corpus_en, corpus_es, trim=3000):
     # Test whether alignment conversion was successful
     converted_als = Alignments(alignment_file, corpus_en, corpus_es, trim=trim).alignments
-    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
     corpus = Corpus(corpus_en)
     corpus_ = Corpus(corpus_es)
     vocab = Vocabulary(corpus, min_count)
@@ -566,7 +566,7 @@ def train_mssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, wi
     # main function for training the MSSG and EMSSG models
     num_of_senses = 2  # 2; number of senses
     k_negative_sampling = 5  # Number of negative samples
-    min_count = 0  # Min count for words to be used in the model, else UNKNOWN
+    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
     alpha_0 = 0.1
     alpha = alpha_0
