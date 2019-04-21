@@ -562,13 +562,10 @@ def save_eval_log_global(vocab, v_c, embedding_file, token2word, enr):
     #   save(vocab, v_c, "BEST_" + embedding_file)
 
 
-def train_mssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window, verbose):
+def train_mssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, window, verbose, alpha_0, topnum, num_of_senses, min_count):
     # main function for training the MSSG and EMSSG models
-    num_of_senses = 2  # 2; number of senses
     k_negative_sampling = 5  # Number of negative samples
-    min_count = 5  # Min count for words to be used in the model, else UNKNOWN
     # Initial learning rate:
-    alpha_0 = 0.1
     alpha = alpha_0
     embedding_file = 'MSSG-%s-%d-%d-%d' % (corpus_en, window, dim, num_of_senses)
     corpus = Corpus(corpus_en)
@@ -576,7 +573,7 @@ def train_mssg(corpus_en, corpus_es, epochs, dim, enriched, use_prepositions, wi
     table = TableForNegativeSamples(vocab)
     tokens = vocab.indices(corpus)
     token2word = create_token2word(vocab, use_prepositions)
-    most_common_words = vocab.get_most_common(1000, corpus)
+    most_common_words = vocab.get_most_common(topnum, corpus)
     vector_count = {}  # for counting vectors in iteration
     print("Training: %s-%d-%d-%d" % (corpus_en, window, dim, num_of_senses))
     # Initialize network:
@@ -689,9 +686,13 @@ def execute_emssg_or_mssg(config):
     window = params["window"]
     use_prepositions = params["use prepositions"]
     verbose = params["print cluster counts"]
+    alpha = params["learning rate"]
+    topnum = params["most common"]
+    senses = params["senses"]
+    min_count = params["min_count"]
 
     start = time.time()
-    train_mssg(english_corpus, foreign_corpus, epochs, dim, enriched, use_prepositions, window, verbose)
+    train_mssg(english_corpus, foreign_corpus, epochs, dim, enriched, use_prepositions, window, verbose, alpha, topnum, senses, min_count)
     end = time.time()
     print("\nIt took: " + str(round((end-start)/60)) + "min to run.")
 
