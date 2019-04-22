@@ -1,6 +1,7 @@
 # EMSSG
 
 This is an attempted reimplementation of the EMSSG model proposed by [Ghanimifard et al. (2015)](https://aclweb.org/anthology//R15-1029).
+It includes preprocessing steps such as tokenizing, POS-tagging and aligning the Europarl Parallel Corpus, training an enriched multi-sense skip-gram model and a preposition sense classification system for prepositions.
 
 ## Getting Started
 After cloning the project, the file structure should not be altered, as some functions depend on it.
@@ -15,7 +16,7 @@ Navigate into `EMSSG` and make sure you have Python 3.5 and Python 2.7 installed
   
   `pip2 install -r requirements_2.7.txt`
 
-There is a small excerpt of the English-Spanish Europarl corpus available for testing, but if you want to use the full [Europarl corpus](http://www.statmt.org/europarl/) for either Spanish, Finnish, German or Polish (es, de, fi, pl), download, unzip and rename both corpora to `input_en` and e.g. `input_es` and place them in the corresponding language pair folder located in `Preprocessing`. For English-Spanish that is `/Preprocessing/es_en/`.
+There is a small excerpt of the English-Spanish Europarl corpus available for testing, but if you want to use the full [Europarl Corpus](http://www.statmt.org/europarl/) for either Spanish, Finnish, German or Polish (es, de, fi, pl), download, unzip and rename both corpora to `input_en` and e.g. `input_es` and place them in the corresponding language pair folder located in `Preprocessing`. For English-Spanish that is `/Preprocessing/es_en/`.
 
 Download and unzip the [TreeTagger package](http://www.cis.uni-muenchen.de/~schmid/tools/TreeTagger/) for your system inside the EMSSG folder. If you placed it somewhere else you need to specify its relative path in `config.json`, otherwise you don't need to change the path.
 
@@ -27,27 +28,27 @@ Clone [fast_align](https://github.com/clab/fast_align) into `EMSSG` and compile 
 #### Enter parameters in `config.json`:
 
 **Preprocessing**
-* `language`: language tag of the second language of the parallel corpus. Can be `"es"`, `"fi"`, `"de"` or `"pl"`
-* `use pos tags`: `true` if POS-tags should be used for aligning the parallel corpora, otherwise `false`
+* `language`: determines the second language from the parallel corpus. Can be "es", "fi", "de" or "pl"
+* `use pos tags`: true if POS-tags should be used for aligning the parallel corpora, otherwise false
 * `TreeTagger location`: relative path to the folder containing the tagger package
 * `fast_align location`: relative path to fast_align folder
 
 **Skip-gram**
-* `learning rate`: learning rate alpha
-* `epochs`: number of iterations through corpus
-* `min_count`: words occurring less than `min_count` times will be excluded from training
+* `learning rate`: set the learning rate alpha
+* `epochs`: set number of iterations
+* `min_count`: words occurring less than _min_count_ times will be excluded from training
 * `dimension`: dimensionality of the embeddings
 
 **EMSSG**
-* `learning rate`: learning rate alpha
-* `epochs`: number of iterations through corpus
-* `most common`: number of words you want to train senses for
-* `senses`: number of senses you want to train 
-* `min_count`: words occurring less than `min_count` times will be excluded from training
+* `learning rate`: set the learning rate alpha
+* `epochs`: set number of iterations
+* `most common`: number N of most common words for which K senses are trained
+* `senses`: number of senses K per most common word
+* `min_count`: words occurring less than min_count times will be excluded from training
 * `dimension`: dimensionality of the embeddings
 * `enriched`: `false` for MSSG, `true` for EMSSG
-* `language`: language tag of the second language of the parallel corpus. Can be `"es"`, `"fi"`, `"de"` or `"pl"`
-* `use prepositions`: if `true`, model trains senses for prepositions only; if false, model trains senses for N most common words
+* `language`: determines the second language from the parallel corpus. Can be `"es"`, `"fi"`, `"de"` or `"pl"`
+* `use prepositions`: if `true`, model trains senses for prepositions only; if false, model trains senses for N most * common words
 * `print cluster counts`: if `true`, print out number of context vectors assigned to each cluster for every token after each iteration
 
 **word_sim**
